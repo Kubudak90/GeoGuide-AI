@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      host: '0.0.0.0',
+      host: '192.168.1.128',
     },
     plugins: [react()],
     // Fix for __publicField error in newer libraries

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+// import maplibregl from 'maplibre-gl'; // Using CDN
+const maplibregl = (window as any).maplibregl;
 import { MapChunk, PlaceDetails, Coordinates } from '../types';
 import { RouteData } from '../services/mapService';
 import PlaceDetailCard from './PlaceDetailCard';
@@ -26,8 +27,8 @@ const MapView: React.FC<MapViewProps> = ({
   onNavigate
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +38,10 @@ const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    if (!MAPTILER_KEY) {
-      setError("MapTiler API Key is missing.");
+    const maplibregl = (window as any).maplibregl;
+    if (!maplibregl) {
+      console.error("MapLibre not found on window");
+      setError("MapLibre library not found");
       return;
     }
 
@@ -47,51 +50,33 @@ const MapView: React.FC<MapViewProps> = ({
       : [-122.4194, 37.7749];
 
     try {
-      // @ts-ignore
-      maplibregl.workerCount = 0;
-
+      console.log("Initializing Map...");
       const map = new maplibregl.Map({
         container: mapContainerRef.current,
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
         center: defaultCenter,
         zoom: 12,
-        attributionControl: false,
-        localIdeographFontFamily: "'Inter', 'sans-serif', 'Arial'",
+        attributionControl: false
       });
 
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
       map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-      if (userLocation) {
-        const el = document.createElement('div');
-        el.className = 'w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md box-border';
-
-        new maplibregl.Marker({ element: el })
-          .setLngLat([userLocation.longitude, userLocation.latitude])
-          .setPopup(new maplibregl.Popup({ offset: 10 }).setText('You are here'))
-          .addTo(map);
-      }
-
       map.on('load', () => {
+        console.log("Map loaded successfully");
         setIsMapLoaded(true);
       });
 
-      map.on('error', (e) => {
-        console.error("MapLibre Error Event:", e);
-        if (e.error && (e.error.message?.includes('Forbidden') || e.error.message?.includes('style'))) {
-          setError("Failed to load map data.");
-        }
+      map.on('error', (e: any) => {
+        console.error("Map Error:", e);
+        setError("Map error: " + (e.error?.message || "Unknown error"));
       });
 
       mapInstanceRef.current = map;
 
     } catch (e: any) {
-      console.error("Critical Error initializing map:", e);
-      let errorMessage = "Failed to initialize map engine.";
-      if (e.message && (e.message.includes('blocked a frame') || e.message.includes('cross-origin') || e.message.includes('Location'))) {
-        errorMessage = "Map cannot load in this sandboxed environment due to browser security restrictions.";
-      }
-      setError(errorMessage);
+      console.error("Error creating map:", e);
+      setError("Failed to create map: " + e.message);
     }
 
     return () => {
@@ -188,7 +173,7 @@ const MapView: React.FC<MapViewProps> = ({
     const map = mapInstanceRef.current;
 
     if (map.getSource('route')) {
-      (map.getSource('route') as maplibregl.GeoJSONSource).setData(routeData.geometry);
+      (map.getSource('route') as any).setData(routeData.geometry);
     } else {
       map.addSource('route', {
         type: 'geojson',
@@ -213,7 +198,7 @@ const MapView: React.FC<MapViewProps> = ({
 
     // Fit bounds to route
     const coordinates = routeData.geometry.coordinates;
-    const bounds = coordinates.reduce((bounds: maplibregl.LngLatBounds, coord: any) => {
+    const bounds = coordinates.reduce((bounds: any, coord: any) => {
       return bounds.extend(coord);
     }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
 

@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { Message, ModelType, Coordinates, GroundingMetadata, SearchChunk, MapChunk, PlaceDetails } from "../types";
+import { Message, ModelType, Coordinates, GroundingMetadata, SearchChunk, MapChunk, PlaceDetails, Place } from "../types";
 
 /// <reference types="vite/client" />
 
@@ -17,17 +17,18 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
+// ... (imports)
+
 export const sendMessageToGemini = async (
   history: Message[],
   currentMessage: string,
   modelType: ModelType,
   userLocation?: Coordinates,
   selectedPlace?: PlaceDetails | null
-): Promise<{ text: string; groundingMetadata?: GroundingMetadata }> => {
+): Promise<{ text: string; groundingMetadata?: GroundingMetadata; places?: Place[] }> => {
 
   try {
     // 1. Format History
-    // Limit history to last 10 messages to keep context relevant and avoid token limits
     const recentHistory = history.slice(-10).map(msg => ({
       role: msg.role,
       parts: [{ text: msg.text }]
@@ -37,7 +38,6 @@ export const sendMessageToGemini = async (
     const tools: any[] = [];
     let toolConfig: any = undefined;
 
-    // "Maps & Search" mode uses gemini-2.5-flash with both tools
     if (modelType === ModelType.MAPS_SEARCH) {
       tools.push({ googleSearch: {} });
       tools.push({ googleMaps: {} });
@@ -54,7 +54,34 @@ export const sendMessageToGemini = async (
       }
     }
 
-    // Construct request
+    // 3. Construct System Instruction
+    // We append this to the user's message to guide the model's output format.
+    const jsonInstruction = `
+    IMPORTANT: If you are recommending places, you MUST output a JSON array of places at the end of your response.
+    The JSON array should be wrapped in a markdown code block labeled 'json'.
+    Each place object in the array MUST have the following fields:
+    - name: string
+    - coordinates: { lat: number, lng: number }
+    - short_description: string (2-3 sentences, engaging tourist guide style)
+    - website: string | null
+    - category: string (e.g., Restaurant, Museum, Park)
+
+    Example format:
+    Here are some great places...
+    \`\`\`json
+    [
+      {
+        "name": "Galata Tower",
+        "coordinates": { "lat": 41.0256, "lng": 28.9744 },
+        "short_description": "A medieval stone tower...",
+        "website": "https://...",
+        "category": "Historical Landmark"
+      }
+    ]
+    \`\`\`
+    Do NOT provide Google Maps links. Use the JSON format instead.
+    `;
+
     let systemContext = "";
     if (selectedPlace) {
       systemContext = `
@@ -69,7 +96,7 @@ If the user asks about "this place" or "it", refer to the place above.
 
     const contents = [
       ...recentHistory,
-      { role: 'user', parts: [{ text: systemContext + currentMessage }] }
+      { role: 'user', parts: [{ text: systemContext + currentMessage + jsonInstruction }] }
     ];
 
     const modelId = modelType;
@@ -80,7 +107,6 @@ If the user asks about "this place" or "it", refer to the place above.
       config: {
         tools: tools.length > 0 ? tools : undefined,
         toolConfig: toolConfig,
-        // Ensure we don't block on safety for benign map queries
         safetySettings: [
           { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
           { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
@@ -90,12 +116,35 @@ If the user asks about "this place" or "it", refer to the place above.
       }
     });
 
-    const text = response.text || "I couldn't generate a response.";
+    let text = response.text || "I couldn't generate a response.";
+    let places: Place[] | undefined = undefined;
 
-    // Extract Grounding Metadata
+    // 4. Parse JSON from Response
+    // Regex to find JSON block wrapped in ```json ... ``` or just ``` ... ```
+    const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+    const match = text.match(jsonRegex);
+
+    if (match && match[1]) {
+      try {
+        const potentialJson = match[1];
+        const parsed = JSON.parse(potentialJson);
+
+        if (Array.isArray(parsed)) {
+          places = parsed;
+          // Optional: Remove the JSON block from the displayed text if desired
+          // text = text.replace(match[0], '').trim(); 
+          // For now, we keep it or maybe clean it up. Let's remove it to keep chat clean.
+          text = text.replace(match[0], '').trim();
+        }
+      } catch (e) {
+        console.warn("Failed to parse JSON from Gemini response:", e);
+      }
+    }
+
+    // Extract Grounding Metadata (keep existing logic)
     const groundingMetadata = extractGroundingMetadata(response);
 
-    return { text, groundingMetadata };
+    return { text, groundingMetadata, places };
 
   } catch (error) {
     console.error("Gemini API Error:", error);

@@ -5,6 +5,18 @@ export interface Message {
   timestamp: number;
   groundingMetadata?: GroundingMetadata;
   isLoading?: boolean;
+  places?: Place[]; // New field for structured place data
+}
+
+export interface Place {
+  name: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  short_description: string;
+  website: string | null;
+  category: string;
 }
 
 export interface GroundingMetadata {

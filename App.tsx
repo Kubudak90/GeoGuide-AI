@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ChatInterface from './components/ChatInterface';
-import MapView from './components/MapView';
 import { MapChunk, Coordinates, PlaceDetails } from './types';
 import { getDirections, RouteData } from './services/mapService';
 
@@ -54,28 +53,17 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-100 font-sans">
-
-      {/* Background Layer: Interactive Map */}
-      <div className="absolute inset-0 z-0">
-        <MapView
-          mapChunks={mapChunks}
-          userLocation={location}
-          selectedPlace={selectedPlace}
-          onSelectPlace={setSelectedPlace}
-          routeData={routeData}
-        />
-      </div>
-
-      {/* Foreground Layer: Chat Interface */}
-      {/* Chat is absolutely positioned on top of the map */}
       <ChatInterface
         onMapChunksUpdate={setMapChunks}
         userLocation={location}
         locationError={locationError}
         selectedPlace={selectedPlace}
         onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
+        // Pass map state to ChatInterface
+        mapChunks={mapChunks}
+        routeData={routeData}
+        onSelectPlace={setSelectedPlace}
       />
-
     </div>
   );
 };

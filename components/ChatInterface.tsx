@@ -1,8 +1,13 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
-import { Message, ModelType, Coordinates, MapChunk, PlaceDetails } from '../types';
+import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
+import MapView from './MapView';
+import { RouteData } from '../services/mapService';
+import PlaceChip from './PlaceChip';
+import PlaceDetailModal from './PlaceDetailModal';
 
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
@@ -10,6 +15,10 @@ interface ChatInterfaceProps {
   locationError?: string | null;
   selectedPlace: PlaceDetails | null;
   onNavigate: () => void;
+  // Map Props
+  mapChunks: MapChunk[];
+  routeData: RouteData | null;
+  onSelectPlace: (place: PlaceDetails | null) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -17,7 +26,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   userLocation,
   locationError,
   selectedPlace,
-  onNavigate
+  onNavigate,
+  mapChunks,
+  routeData,
+  onSelectPlace
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -31,6 +43,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [modelType, setModelType] = useState<ModelType>(ModelType.MAPS_SEARCH);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedChipPlace, setSelectedChipPlace] = useState<Place | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -101,7 +114,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     try {
       const response = await sendMessageToGemini(messages, userText, modelType, userLocation, selectedPlace);
 
-      // If we have map chunks, update the main map
+      // If we have map chunks, update the main map (Legacy support)
       if (response.groundingMetadata?.mapChunks && response.groundingMetadata.mapChunks.length > 0) {
         onMapChunksUpdate(response.groundingMetadata.mapChunks);
       }
@@ -113,6 +126,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             ...msg,
             text: response.text,
             groundingMetadata: response.groundingMetadata,
+            places: response.places, // Store structured places
             isLoading: false
           }
           : msg
@@ -143,24 +157,58 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
+    e.target.style.height = `${e.target.scrollHeight} px`;
+  };
+
+  const handlePlaceClick = (place: Place) => {
+    setSelectedChipPlace(place);
+  };
+
+  const handleNavigateToPlace = (place: Place) => {
+    // Close modal
+    setSelectedChipPlace(null);
+
+    // Convert Place to PlaceDetails for MapView compatibility
+    const placeDetails: PlaceDetails = {
+      id: `place - ${Date.now()} `, // Generate temp ID
+      name: place.name,
+      formatted_address: '', // We might not have full address from JSON, but coords are key
+      geometry: {
+        location: place.coordinates
+      },
+      website: place.website || undefined
+    };
+
+    // Select place on map (triggers flyTo in MapView)
+    onSelectPlace(placeDetails);
+
+    // Trigger navigation if needed (optional, or user clicks "Go" again)
+    // For now, let's just select it so it shows on map. 
+    // If we want to start routing immediately:
+    // onNavigate(); // This would require selectedPlace to be updated first, which happens via onSelectPlace prop but might be async in App.tsx.
+    // Better to let user see it on map first.
   };
 
   return (
-    <>
-      {/* Toggle Button for Mobile/Desktop */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute top-4 z-40 bg-white p-2 rounded-lg shadow-md hover:bg-gray-50 transition-all duration-300 ${isSidebarOpen ? 'left-[400px] hidden md:block' : 'left-4'}`}
-      >
-        {isSidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
-      </button>
+    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
 
-      {/* Sidebar Container */}
-      <div className={`absolute top-0 left-0 h-full w-full md:w-[400px] bg-white/95 backdrop-blur-sm shadow-2xl z-30 flex flex-col transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Mobile: Map on Top (40%), Desktop: Map on Right (Flex Grow) */}
+      <div className="h-[40vh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200">
+        <MapView
+          mapChunks={mapChunks}
+          userLocation={userLocation}
+          selectedPlace={selectedPlace}
+          onSelectPlace={onSelectPlace}
+          routeData={routeData}
+          onNavigate={onNavigate}
+        />
+      </div>
+
+      {/* Mobile: Chat on Bottom (60%), Desktop: Chat on Left (Sidebar) */}
+      <div className="h-[60vh] w-full md:h-full md:w-[400px] md:order-1 flex flex-col bg-white shadow-xl z-10">
 
         {/* Header */}
-        <div className="flex-none bg-white/50 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+        <div className="flex-none bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm z-20">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-sm">
               <MapPin size={20} />
@@ -203,7 +251,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide bg-slate-50/50">
           {messages.map(msg => (
-            <ChatMessage key={msg.id} message={msg} />
+            <div key={msg.id} className="flex flex-col gap-2 mb-4">
+              <ChatMessage message={msg} />
+
+              {/* Render Place Chips if available */}
+              {msg.places && msg.places.length > 0 && (
+                <div className="flex flex-col gap-2 ml-12 animate-in slide-in-from-left-2 duration-300">
+                  {msg.places.map((place, index) => (
+                    <PlaceChip
+                      key={index}
+                      place={place}
+                      onClick={handlePlaceClick}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
@@ -242,8 +305,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-    </>
+
+      {/* Place Detail Modal */}
+      {selectedChipPlace && (
+        <PlaceDetailModal
+          place={selectedChipPlace}
+          onClose={() => setSelectedChipPlace(null)}
+          onNavigate={handleNavigateToPlace}
+        />
+      )}
+
+    </div>
   );
 };
 
 export default ChatInterface;
+
