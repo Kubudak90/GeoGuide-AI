@@ -11,26 +11,59 @@ const App: React.FC = () => {
   // Lifted State
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [favorites, setFavorites] = useState<PlaceDetails[]>(() => {
+    const saved = localStorage.getItem('favorites');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // Initialize Location on Mount
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-          setLocationError(null);
-        },
-        (error) => {
-          console.warn("Location access denied or failed", error);
-          setLocationError("Access denied");
-        }
-      );
-    } else {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const toggleFavorite = (place: PlaceDetails) => {
+    setFavorites(prev => {
+      const exists = prev.some(p => p.name === place.name); // Simple check by name for now
+      if (exists) {
+        return prev.filter(p => p.name !== place.name);
+      } else {
+        return [...prev, place];
+      }
+    });
+  };
+
+  const isFavorite = (place: PlaceDetails) => {
+    return favorites.some(p => p.name === place.name);
+  };
+
+  // Initialize Location Watch on Mount
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
       setLocationError("Unsupported");
+      return;
     }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        setLocationError(null);
+      },
+      (error) => {
+        console.warn("Location access denied or failed", error);
+        setLocationError("Access denied");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   const handleNavigate = async (place: PlaceDetails) => {
@@ -52,7 +85,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-gray-100 font-sans">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 font-sans">
       <ChatInterface
         onMapChunksUpdate={setMapChunks}
         userLocation={location}
@@ -63,6 +96,9 @@ const App: React.FC = () => {
         mapChunks={mapChunks}
         routeData={routeData}
         onSelectPlace={setSelectedPlace}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
+        isFavorite={isFavorite}
       />
     </div>
   );

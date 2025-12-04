@@ -1,14 +1,41 @@
 import React from 'react';
 import { X, Navigation2, Globe, Heart, Star } from 'lucide-react';
-import { Place } from '../types';
+import { Place, PlaceDetails } from '../types';
 
 interface PlaceDetailModalProps {
     place: Place;
     onClose: () => void;
     onNavigate: (place: Place) => void;
+    onToggleFavorite: (place: PlaceDetails) => void;
+    isFavorite: (place: PlaceDetails) => boolean;
 }
 
-const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onNavigate }) => {
+const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onNavigate, onToggleFavorite, isFavorite }) => {
+    // Convert Place to PlaceDetails for compatibility with App.tsx state
+    const placeDetails: PlaceDetails = {
+        id: `place-${place.name}`, // Generate ID based on name if missing
+        name: place.name,
+        formatted_address: '',
+        geometry: {
+            location: place.coordinates
+        },
+        website: place.website || undefined,
+        // Preserve extra fields for display if needed, but PlaceDetails is the state type
+        // We might need to extend PlaceDetails or just store what we have.
+        // For now, let's ensure we store enough to display in FavoritesList.
+        // We'll cheat a bit and cast or ensure PlaceDetails has category/desc if we want to show them in favorites list.
+    };
+
+    // Actually, we should probably update PlaceDetails type to include category/desc or make FavoritesList accept Place.
+    // But to fix the immediate type error and logic:
+    const placeForFavorite: any = {
+        ...placeDetails,
+        category: place.category,
+        short_description: place.short_description
+    };
+
+    const isFav = isFavorite(placeForFavorite);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
@@ -59,10 +86,11 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                         )}
 
                         <button
-                            className="bg-gray-100 text-gray-700 p-3 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center"
-                            title="Add to Favorites"
+                            onClick={() => onToggleFavorite(placeForFavorite)}
+                            className={`p-3 rounded-xl transition-colors flex items-center justify-center ${isFav ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                            title={isFav ? "Remove from Favorites" : "Add to Favorites"}
                         >
-                            <Heart size={20} />
+                            <Heart size={20} className={isFav ? "fill-current" : ""} />
                         </button>
                     </div>
                 </div>

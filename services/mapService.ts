@@ -1,6 +1,6 @@
 import { Coordinates } from '../types';
 
-const MAPTILER_KEY = 'RGMIRyh6TzFTqtE3h8jB';
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || '';
 
 export interface RouteData {
     geometry: any; // GeoJSON geometry
@@ -13,8 +13,9 @@ export const getDirections = async (start: Coordinates, end: Coordinates): Promi
         const startStr = `${start.longitude},${start.latitude}`;
         const endStr = `${end.longitude},${end.latitude}`;
 
-        // Using driving profile
-        const url = `https://api.maptiler.com/routing/driving/${startStr};${endStr}?key=${MAPTILER_KEY}&overview=full&geometries=geojson`;
+        // Using OSRM public demo server (free, no key required)
+        // Note: MapTiler routing requires a specific plan/endpoint.
+        const url = `https://router.project-osrm.org/route/v1/driving/${startStr};${endStr}?overview=full&geometries=geojson`;
 
         const response = await fetch(url);
         if (!response.ok) {

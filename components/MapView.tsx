@@ -16,7 +16,7 @@ interface MapViewProps {
 }
 
 // User provided MapTiler Key
-const MAPTILER_KEY = 'RGMIRyh6TzFTqtE3h8jB';
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || '';
 
 const MapView: React.FC<MapViewProps> = ({
   mapChunks,
@@ -213,38 +213,43 @@ const MapView: React.FC<MapViewProps> = ({
     if (!mapInstanceRef.current || !isMapLoaded) return;
 
     const map = mapInstanceRef.current;
-
-    // Traffic style URL from MapTiler
-    // Usually we just overlay a traffic source or switch style. 
-    // For simplicity, we'll try to add a traffic tile layer if available or just inform user.
-    // MapTiler offers a specific traffic endpoint.
+    const TOMTOM_KEY = import.meta.env.VITE_TOMTOM_KEY;
 
     if (showTraffic) {
-      if (!map.getSource('traffic')) {
-        map.addSource('traffic', {
-          type: 'vector',
-          url: `https://api.maptiler.com/tiles/v3-openmaptiles/tiles.json?key=${MAPTILER_KEY}` // Standard tiles don't always have live traffic overlay easily accessible without a specific style.
-          // Actually, MapTiler has a specific traffic dataset but it requires a separate style or vector tiles.
-          // Let's use a standard traffic flow tile layer if possible.
-        });
-        // Note: Real-time traffic usually requires a paid/specific layer. 
-        // We will simulate the toggle by switching to a style that includes traffic if available, 
-        // or just adding a generic traffic layer if we had the URL.
-        // For this demo, we will use the 'hybrid' satellite style as a proxy for "richer data" 
-        // or try to load a traffic specific style if known.
-        // A common free traffic tile source is difficult to find without a specific key/subscription.
-        // We will stick to the requirement: "git dediğin zaman haritada yön trafik bilgisi falan da olacak"
-        // The route API returns duration with traffic. Visualizing traffic flow might be complex.
-        // We will try to add a standard XYZ traffic layer if one exists, otherwise we rely on the route color/info.
+      if (!TOMTOM_KEY) {
+        console.warn("TomTom API Key missing for traffic layer");
+        return;
+      }
 
-        // Let's try to add a standard OSM traffic overlay if available, or just skip visual traffic layer if not reliable.
-        // Alternative: Switch to a style that highlights roads better.
+      if (!map.getSource('traffic-flow')) {
+        // Add TomTom Traffic Flow Source
+        map.addSource('traffic-flow', {
+          type: 'raster',
+          tiles: [
+            `https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${TOMTOM_KEY}`
+          ],
+          tileSize: 256
+        });
+
+        // Add Layer
+        map.addLayer({
+          id: 'traffic-flow-layer',
+          type: 'raster',
+          source: 'traffic-flow',
+          minzoom: 6,
+          maxzoom: 22,
+          paint: {
+            'raster-opacity': 0.7
+          }
+        });
+      } else {
+        map.setLayoutProperty('traffic-flow-layer', 'visibility', 'visible');
+      }
+    } else {
+      if (map.getLayer('traffic-flow-layer')) {
+        map.setLayoutProperty('traffic-flow-layer', 'visibility', 'none');
       }
     }
-
-    // Since we can't easily get a free traffic tile layer without a specific subscription, 
-    // we will rely on the Route API's duration-in-traffic (already used in routing).
-    // But we will keep the toggle UI for future expansion.
 
   }, [showTraffic, isMapLoaded]);
 

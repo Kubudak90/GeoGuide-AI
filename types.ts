@@ -73,4 +73,8 @@ export interface PlaceDetails {
   website?: string;
   price_level?: number;
   isOpenNow?: boolean; // Simplified from opening_hours method
+
+  // Extended fields for Favorites
+  category?: string;
+  short_description?: string;
 }

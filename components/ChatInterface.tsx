@@ -9,6 +9,9 @@ import { RouteData } from '../services/mapService';
 import PlaceChip from './PlaceChip';
 import PlaceDetailModal from './PlaceDetailModal';
 
+import FavoritesList from './FavoritesList';
+import { Heart } from 'lucide-react';
+
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
   userLocation?: Coordinates;
@@ -19,6 +22,10 @@ interface ChatInterfaceProps {
   mapChunks: MapChunk[];
   routeData: RouteData | null;
   onSelectPlace: (place: PlaceDetails | null) => void;
+  // Favorites Props
+  favorites: PlaceDetails[];
+  onToggleFavorite: (place: PlaceDetails) => void;
+  isFavorite: (place: PlaceDetails) => boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -29,7 +36,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onNavigate,
   mapChunks,
   routeData,
-  onSelectPlace
+  onSelectPlace,
+  favorites,
+  onToggleFavorite,
+  isFavorite
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -44,6 +54,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [modelType, setModelType] = useState<ModelType>(ModelType.MAPS_SEARCH);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedChipPlace, setSelectedChipPlace] = useState<Place | null>(null);
+  const [showFavorites, setShowFavorites] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -230,21 +241,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
 
           {/* Simple Mode Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setModelType(ModelType.MAPS_SEARCH)}
-              className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}
-              title="Map Mode"
+              onClick={() => setShowFavorites(true)}
+              className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="Favorites"
             >
-              <MapPin size={16} />
+              <Heart size={18} className={favorites.length > 0 ? "fill-red-500 text-red-500" : ""} />
             </button>
-            <button
-              onClick={() => setModelType(ModelType.REASONING)}
-              className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white shadow-sm text-purple-600' : 'text-gray-400'}`}
-              title="Reasoning Mode"
-            >
-              <Sparkles size={16} />
-            </button>
+
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setModelType(ModelType.MAPS_SEARCH)}
+                className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}
+                title="Map Mode"
+              >
+                <MapPin size={16} />
+              </button>
+              <button
+                onClick={() => setModelType(ModelType.REASONING)}
+                className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white shadow-sm text-purple-600' : 'text-gray-400'}`}
+                title="Reasoning Mode"
+              >
+                <Sparkles size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -280,7 +301,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               onChange={handleInputResize}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
-              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-400 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-sm"
+              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-400 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-base md:text-sm"
               rows={1}
               style={{ minHeight: '44px' }}
             />
@@ -312,6 +333,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           place={selectedChipPlace}
           onClose={() => setSelectedChipPlace(null)}
           onNavigate={handleNavigateToPlace}
+          onToggleFavorite={onToggleFavorite}
+          isFavorite={isFavorite}
+        />
+      )}
+
+      {/* Favorites List Modal */}
+      {showFavorites && (
+        <FavoritesList
+          favorites={favorites}
+          onClose={() => setShowFavorites(false)}
+          onSelect={(place) => {
+            setShowFavorites(false);
+            // Convert PlaceDetails to Place for handleNavigateToPlace
+            // We need to ensure place has coordinates. PlaceDetails has geometry.location
+            const placeForNav: Place = {
+              name: place.name,
+              coordinates: place.geometry.location,
+              short_description: place.short_description || '',
+              category: place.category || 'Saved Place',
+              website: place.website || null
+            };
+            handleNavigateToPlace(placeForNav);
+          }}
+          onRemove={(place: any) => onToggleFavorite(place)}
         />
       )}
 
