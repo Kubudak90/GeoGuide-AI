@@ -26,7 +26,7 @@ const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNav
         )}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors"
+          className="absolute top-2 right-2 w-10 h-10 md:w-8 md:h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
         >
           <X size={16} />
         </button>
@@ -79,14 +79,14 @@ const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNav
           {onNavigate && (
             <button
               onClick={onNavigate}
-              className="col-span-2 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-emerald-200 shadow-md"
+              className="col-span-2 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 min-h-[48px] rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-emerald-200 shadow-md active:scale-95"
             >
               <ArrowRightCircle size={18} /> GO
             </button>
           )}
 
           {place.website && (
-            <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
+            <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-3 min-h-[48px] rounded-lg text-sm font-medium hover:bg-blue-100 transition-all active:scale-95">
               <Globe size={16} /> Website
             </a>
           )}
@@ -94,7 +94,7 @@ const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNav
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + " " + place.formatted_address)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors ${!place.website ? 'col-span-2' : ''}`}
+            className={`flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3 min-h-[48px] rounded-lg text-sm font-medium hover:bg-gray-200 transition-all active:scale-95 ${!place.website ? 'col-span-2' : ''}`}
           >
             <Navigation size={16} /> Google Maps
           </a>

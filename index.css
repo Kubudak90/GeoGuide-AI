@@ -7,6 +7,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overscroll-behavior: none;
+  /* Enable smooth scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Custom scrollbar for chat */
@@ -17,4 +19,183 @@ body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ========================================
+   MOBILE UX IMPROVEMENTS
+   ======================================== */
+
+/* Ensure minimum touch target size (44x44px) for all interactive elements */
+button,
+a,
+input[type="button"],
+input[type="submit"],
+[role="button"] {
+  min-width: 44px;
+  min-height: 44px;
+  /* Smooth transitions for all buttons */
+  transition: all 0.2s ease-in-out;
+}
+
+/* Smooth hover and active states for better feedback */
+button:active,
+[role="button"]:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Improve touch target for small icons/buttons on mobile */
+@media (max-width: 768px) {
+  button,
+  a,
+  [role="button"] {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* Larger tap targets for better accessibility */
+  button svg,
+  a svg {
+    pointer-events: none;
+  }
+}
+
+/* Smooth animations for modal/overlay appearances */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apply smooth slide-up animation for mobile modals */
+@media (max-width: 768px) {
+  [role="dialog"],
+  .modal {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+/* Smooth scroll behavior for better UX */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Improve textarea resize on mobile */
+textarea {
+  resize: none;
+  /* Prevent zoom on iOS */
+  font-size: 16px;
+}
+
+/* Better focus states for accessibility */
+input:focus,
+textarea:focus,
+button:focus {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* Remove tap highlight on mobile browsers */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth transitions for all interactive elements */
+a,
+button,
+input,
+textarea,
+select {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+/* Prevent text selection on buttons for better mobile UX */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Better mobile viewport handling */
+@media (max-width: 768px) {
+  html {
+    /* Prevent horizontal scroll */
+    overflow-x: hidden;
+  }
+
+  body {
+    /* Better mobile scrolling */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Smooth scale transitions for cards and interactive elements */
+.card-hover,
+.interactive-element {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover,
+.interactive-element:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Active state for mobile touch feedback */
+.card-hover:active,
+.interactive-element:active {
+  transform: translateY(0);
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

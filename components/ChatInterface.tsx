@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
@@ -11,6 +11,13 @@ import PlaceDetailModal from './PlaceDetailModal';
 
 import FavoritesList from './FavoritesList';
 import { Heart } from 'lucide-react';
+
+// Memoized components for better performance
+const MemoizedChatMessage = React.memo(ChatMessage);
+const MemoizedPlaceChip = React.memo(PlaceChip);
+const MemoizedMapView = React.memo(MapView);
+const MemoizedPlaceDetailModal = React.memo(PlaceDetailModal);
+const MemoizedFavoritesList = React.memo(FavoritesList);
 
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
@@ -59,16 +66,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = () => {
+  // Auto-scroll to bottom (memoized)
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
 
     const userText = inputValue.trim();
@@ -156,32 +163,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputValue, isLoading, messages, modelType, userLocation, selectedPlace, onNavigate, onMapChunksUpdate]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputResize = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight} px`;
-  };
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  }, []);
 
-  const handlePlaceClick = (place: Place) => {
+  const handlePlaceClick = useCallback((place: Place) => {
     setSelectedChipPlace(place);
-  };
+  }, []);
 
-  const handleNavigateToPlace = (place: Place) => {
+  const handleNavigateToPlace = useCallback((place: Place) => {
     // Close modal
     setSelectedChipPlace(null);
 
     // Convert Place to PlaceDetails for MapView compatibility
     const placeDetails: PlaceDetails = {
-      id: `place - ${Date.now()} `, // Generate temp ID
+      id: `place-${Date.now()}`, // Generate temp ID
       name: place.name,
       formatted_address: '', // We might not have full address from JSON, but coords are key
       geometry: {
@@ -194,18 +201,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     onSelectPlace(placeDetails);
 
     // Trigger navigation if needed (optional, or user clicks "Go" again)
-    // For now, let's just select it so it shows on map. 
+    // For now, let's just select it so it shows on map.
     // If we want to start routing immediately:
     // onNavigate(); // This would require selectedPlace to be updated first, which happens via onSelectPlace prop but might be async in App.tsx.
     // Better to let user see it on map first.
-  };
+  }, [onSelectPlace]);
 
   return (
     <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
 
       {/* Mobile: Map on Top (40%), Desktop: Map on Right (Flex Grow) */}
       <div className="h-[40vh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200">
-        <MapView
+        <MemoizedMapView
           mapChunks={mapChunks}
           userLocation={userLocation}
           selectedPlace={selectedPlace}
@@ -273,13 +280,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide bg-slate-50/50">
           {messages.map(msg => (
             <div key={msg.id} className="flex flex-col gap-2 mb-4">
-              <ChatMessage message={msg} />
+              <MemoizedChatMessage message={msg} />
 
               {/* Render Place Chips if available */}
               {msg.places && msg.places.length > 0 && (
                 <div className="flex flex-col gap-2 ml-12 animate-in slide-in-from-left-2 duration-300">
                   {msg.places.map((place, index) => (
-                    <PlaceChip
+                    <MemoizedPlaceChip
                       key={index}
                       place={place}
                       onClick={handlePlaceClick}
@@ -308,8 +315,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
-              className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() && !isLoading
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md'
+              className={`flex-shrink-0 w-11 h-11 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() && !isLoading
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md active:scale-95'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
             >
@@ -329,7 +336,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Place Detail Modal */}
       {selectedChipPlace && (
-        <PlaceDetailModal
+        <MemoizedPlaceDetailModal
           place={selectedChipPlace}
           onClose={() => setSelectedChipPlace(null)}
           onNavigate={handleNavigateToPlace}
@@ -340,7 +347,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Favorites List Modal */}
       {showFavorites && (
-        <FavoritesList
+        <MemoizedFavoritesList
           favorites={favorites}
           onClose={() => setShowFavorites(false)}
           onSelect={(place) => {

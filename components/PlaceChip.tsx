@@ -11,7 +11,7 @@ const PlaceChip: React.FC<PlaceChipProps> = ({ place, onClick }) => {
     return (
         <button
             onClick={() => onClick(place)}
-            className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-3 shadow-sm hover:shadow-md hover:border-emerald-500 transition-all text-left group w-full max-w-xs"
+            className="interactive-element flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-3 min-h-[60px] shadow-sm hover:shadow-md hover:border-emerald-500 transition-all text-left group w-full max-w-xs active:scale-98"
         >
             <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
                 <MapPin size={20} />

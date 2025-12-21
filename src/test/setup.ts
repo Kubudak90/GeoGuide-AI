@@ -59,3 +59,6 @@ Object.defineProperty(global.navigator, 'geolocation', {
   writable: true,
   configurable: true,
 });
+
+// Mock scrollIntoView for all elements
+Element.prototype.scrollIntoView = vi.fn();

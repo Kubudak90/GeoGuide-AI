@@ -45,7 +45,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+                        className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-3 min-w-[48px] min-h-[48px] rounded-full backdrop-blur-md transition-all active:scale-95 flex items-center justify-center"
                     >
                         <X size={20} />
                     </button>
@@ -67,7 +67,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                     <div className="flex gap-3">
                         <button
                             onClick={() => onNavigate(place)}
-                            className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            className="flex-1 bg-emerald-600 text-white py-3 px-4 min-h-[48px] rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
                         >
                             <Navigation2 size={20} />
                             Go There
@@ -78,7 +78,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                                 href={place.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="bg-gray-100 text-gray-700 p-3 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center"
+                                className="bg-gray-100 text-gray-700 p-3 min-w-[48px] min-h-[48px] rounded-xl hover:bg-gray-200 transition-all active:scale-95 flex items-center justify-center"
                                 title="Visit Website"
                             >
                                 <Globe size={20} />
@@ -87,7 +87,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
 
                         <button
                             onClick={() => onToggleFavorite(placeForFavorite)}
-                            className={`p-3 rounded-xl transition-colors flex items-center justify-center ${isFav ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                            className={`p-3 min-w-[48px] min-h-[48px] rounded-xl transition-all active:scale-95 flex items-center justify-center ${isFav ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                             title={isFav ? "Remove from Favorites" : "Add to Favorites"}
                         >
                             <Heart size={20} className={isFav ? "fill-current" : ""} />
