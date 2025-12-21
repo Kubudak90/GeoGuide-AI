@@ -57,4 +57,5 @@ const mockGeolocation = {
 Object.defineProperty(global.navigator, 'geolocation', {
   value: mockGeolocation,
   writable: true,
+  configurable: true,
 });
