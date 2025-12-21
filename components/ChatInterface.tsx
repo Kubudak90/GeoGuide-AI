@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu, Download } from 'lucide-react';
 import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
@@ -10,6 +10,7 @@ import PlaceChip from './PlaceChip';
 import PlaceDetailModal from './PlaceDetailModal';
 
 import FavoritesList from './FavoritesList';
+import OfflineMapDownloader from './OfflineMapDownloader';
 import { Heart } from 'lucide-react';
 
 // Memoized components for better performance
@@ -18,6 +19,7 @@ const MemoizedPlaceChip = React.memo(PlaceChip);
 const MemoizedMapView = React.memo(MapView);
 const MemoizedPlaceDetailModal = React.memo(PlaceDetailModal);
 const MemoizedFavoritesList = React.memo(FavoritesList);
+const MemoizedOfflineMapDownloader = React.memo(OfflineMapDownloader);
 
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
@@ -62,6 +64,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedChipPlace, setSelectedChipPlace] = useState<Place | null>(null);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showOfflineMaps, setShowOfflineMaps] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -250,6 +253,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {/* Simple Mode Toggle */}
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowOfflineMaps(true)}
+              className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+              title="Offline Maps"
+            >
+              <Download size={18} />
+            </button>
+
+            <button
               onClick={() => setShowFavorites(true)}
               className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
               title="Favorites"
@@ -364,6 +375,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             handleNavigateToPlace(placeForNav);
           }}
           onRemove={(place: any) => onToggleFavorite(place)}
+        />
+      )}
+
+      {/* Offline Maps Downloader Modal */}
+      {showOfflineMaps && (
+        <MemoizedOfflineMapDownloader
+          onClose={() => setShowOfflineMaps(false)}
         />
       )}
 
