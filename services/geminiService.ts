@@ -17,6 +17,58 @@ if (!apiKey) {
 
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
+/**
+ * Retry helper with exponential backoff
+ * @param fn Function to retry
+ * @param maxRetries Maximum number of retries (default: 3)
+ * @param delayMs Initial delay in milliseconds (default: 1000)
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+
+      // Don't retry on auth errors or bad requests
+      if (error?.status === 401 || error?.status === 403 || error?.status === 400) {
+        throw error;
+      }
+
+      // Don't retry if we've exhausted attempts
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Only retry on network errors, timeouts, or 429/500/503
+      const shouldRetry =
+        error?.status === 429 ||
+        error?.status === 500 ||
+        error?.status === 503 ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('network') ||
+        error?.message?.includes('fetch');
+
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      const waitTime = delayMs * Math.pow(2, attempt);
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+
+  throw lastError;
+}
+
 // ... (imports)
 
 export const sendMessageToGemini = async (
@@ -101,20 +153,27 @@ If the user asks about "this place" or "it", refer to the place above.
 
     const modelId = modelType;
 
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: contents,
-      config: {
-        tools: tools.length > 0 ? tools : undefined,
-        toolConfig: toolConfig,
-        safetySettings: [
-          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        ]
-      }
-    });
+    // Wrap API call with retry mechanism
+    const response = await retryWithBackoff(
+      async () => {
+        return await ai.models.generateContent({
+          model: modelId,
+          contents: contents,
+          config: {
+            tools: tools.length > 0 ? tools : undefined,
+            toolConfig: toolConfig,
+            safetySettings: [
+              { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+              { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+              { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+              { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+            ]
+          }
+        });
+      },
+      3, // maxRetries
+      1000 // initial delay (1 second)
+    );
 
     let text = response.text || "I couldn't generate a response.";
     let places: Place[] | undefined = undefined;
@@ -146,9 +205,40 @@ If the user asks about "this place" or "it", refer to the place above.
 
     return { text, groundingMetadata, places };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw error;
+
+    // Enhanced error handling with user-friendly messages
+    if (error?.message?.includes('API key')) {
+      throw new Error('❌ API anahtarı geçersiz. Lütfen ayarlarınızı kontrol edin.');
+    }
+
+    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
+      throw new Error('⏳ API limiti aşıldı. Lütfen birkaç saniye bekleyip tekrar deneyin.');
+    }
+
+    if (error?.status === 401 || error?.status === 403) {
+      throw new Error('🔐 Yetkilendirme hatası. API anahtarınızı kontrol edin.');
+    }
+
+    if (error?.status === 500 || error?.status === 503) {
+      throw new Error('🔧 Sunucu geçici olarak kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+    }
+
+    if (!navigator.onLine) {
+      throw new Error('📡 İnternet bağlantısı yok. Lütfen bağlantınızı kontrol edin.');
+    }
+
+    if (error?.message?.includes('timeout') || error?.message?.includes('ETIMEDOUT')) {
+      throw new Error('⏱️ İstek zaman aşımına uğradı. Lütfen tekrar deneyin.');
+    }
+
+    if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      throw new Error('🌐 Bağlantı hatası. İnternet bağlantınızı kontrol edin.');
+    }
+
+    // Default user-friendly error
+    throw new Error('😕 Bir hata oluştu. Lütfen tekrar deneyin.');
   }
 };
 

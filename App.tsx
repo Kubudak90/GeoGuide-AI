@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ChatInterface from './components/ChatInterface';
+import OfflineIndicator from './components/OfflineIndicator';
 import { MapChunk, Coordinates, PlaceDetails } from './types';
 import { getDirections, RouteData } from './services/mapService';
 
@@ -86,6 +87,9 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 font-sans">
+      {/* Offline status indicator */}
+      <OfflineIndicator />
+
       <ChatInterface
         onMapChunksUpdate={setMapChunks}
         userLocation={location}
