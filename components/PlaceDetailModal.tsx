@@ -113,9 +113,9 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="p-6 bg-white/50 backdrop-blur-sm"
+                    className="p-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
                 >
-                    <p className="text-gray-700 leading-relaxed mb-6 font-medium">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-6 font-medium">
                         {place.short_description}
                     </p>
 
@@ -138,7 +138,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                                 href={place.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="glass text-gray-700 p-3.5 min-w-[52px] min-h-[52px] rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-center"
+                                className="glass text-gray-700 dark:text-gray-300 p-3.5 min-w-[52px] min-h-[52px] rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center justify-center"
                                 title="Visit Website"
                             >
                                 <Globe size={22} />
@@ -150,7 +150,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                             whileTap={{ scale: 0.95 }}
                             onClick={() => onToggleFavorite(placeForFavorite)}
                             className={`glass p-3.5 min-w-[52px] min-h-[52px] rounded-xl transition-all flex items-center justify-center ${
-                                isFav ? 'bg-red-50 text-red-500' : 'text-gray-700 hover:bg-red-50 hover:text-red-500'
+                                isFav ? 'bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400'
                             }`}
                             title={isFav ? "Remove from Favorites" : "Add to Favorites"}
                         >

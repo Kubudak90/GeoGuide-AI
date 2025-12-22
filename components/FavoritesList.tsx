@@ -36,7 +36,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.1 }}
-                            className="text-xl font-bold text-gray-900 flex items-center gap-2"
+                            className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"
                         >
                             <motion.div
                                 animate={{ scale: [1, 1.2, 1] }}
@@ -62,7 +62,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2 }}
-                            className="text-sm text-gray-600 mt-2 font-medium"
+                            className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-medium"
                         >
                             {favorites.length} {favorites.length === 1 ? 'place' : 'places'} saved
                         </motion.p>
@@ -82,10 +82,10 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                                 transition={{ duration: 2, repeat: Infinity }}
                                 className="mx-auto w-20 h-20 glass rounded-2xl flex items-center justify-center mb-4"
                             >
-                                <Heart size={36} className="text-gray-300" />
+                                <Heart size={36} className="text-gray-300 dark:text-gray-600" />
                             </motion.div>
-                            <p className="text-gray-600 font-semibold">No favorites yet</p>
-                            <p className="text-sm text-gray-500 mt-2">Start exploring and save places you like!</p>
+                            <p className="text-gray-600 dark:text-gray-400 font-semibold">No favorites yet</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Start exploring and save places you like!</p>
                         </motion.div>
                     ) : (
                         <div className="space-y-3">
@@ -100,7 +100,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                                 >
                                     {/* Gradient border on hover */}
                                     <div className="absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r from-red-400 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
-                                    <div className="absolute inset-[2px] rounded-2xl bg-white -z-10"></div>
+                                    <div className="absolute inset-[2px] rounded-2xl bg-white dark:bg-slate-800 -z-10"></div>
 
                                     <motion.div
                                         whileHover={{ rotate: 360 }}
@@ -111,8 +111,8 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                                     </motion.div>
 
                                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(place)}>
-                                        <h3 className="font-semibold text-gray-800 truncate">{place.name}</h3>
-                                        <p className="text-xs text-gray-500 truncate">{place.category || 'Place'}</p>
+                                        <h3 className="font-semibold text-gray-800 dark:text-gray-200 truncate">{place.name}</h3>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{place.category || 'Place'}</p>
                                     </div>
 
                                     <div className="flex items-center gap-1.5">
@@ -120,7 +120,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => onSelect(place)}
-                                            className="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+                                            className="p-2.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
                                             title="View on Map"
                                         >
                                             <Navigation2 size={18} />
@@ -129,7 +129,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                                             whileHover={{ scale: 1.1, rotate: 10 }}
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => onRemove(place)}
-                                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+                                            className="p-2.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
                                             title="Remove"
                                         >
                                             <Trash2 size={18} />
