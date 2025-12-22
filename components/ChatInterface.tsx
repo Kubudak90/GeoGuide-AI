@@ -13,6 +13,8 @@ import PlaceDetailModal from './PlaceDetailModal';
 import FavoritesList from './FavoritesList';
 import OfflineMapDownloader from './OfflineMapDownloader';
 import ThemeToggle from './ThemeToggle';
+import LanguageToggle from './LanguageToggle';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Heart } from 'lucide-react';
 
 // Memoized components for better performance
@@ -52,11 +54,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onToggleFavorite,
   isFavorite
 }) => {
+  const { t } = useLanguage();
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'model',
-      text: "Hello! I'm your GeoGuide. Ask me to find restaurants, sights, or businesses, and I'll show them on the map.",
+      text: t('chat.welcome'),
       timestamp: Date.now()
     }
   ]);
@@ -269,6 +273,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 relative z-10">
+            <LanguageToggle />
             <ThemeToggle />
 
             <motion.button

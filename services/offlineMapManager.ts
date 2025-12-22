@@ -49,6 +49,76 @@ export const AVAILABLE_REGIONS: MapRegion[] = [
     size: 100 * 1024 * 1024, // 100 MB
     zoomRange: { min: 0, max: 14 },
     url: 'https://example.com/maps/izmir.pmtiles'
+  },
+  {
+    id: 'antalya',
+    name: 'antalya',
+    displayName: 'Antalya',
+    bounds: [30.5, 36.7, 31.0, 37.1],
+    center: [30.7133, 36.8969],
+    size: 90 * 1024 * 1024, // 90 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/antalya.pmtiles'
+  },
+  {
+    id: 'bursa',
+    name: 'bursa',
+    displayName: 'Bursa',
+    bounds: [28.9, 40.1, 29.3, 40.3],
+    center: [29.0636, 40.1826],
+    size: 70 * 1024 * 1024, // 70 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/bursa.pmtiles'
+  },
+  {
+    id: 'adana',
+    name: 'adana',
+    displayName: 'Adana',
+    bounds: [35.2, 36.9, 35.5, 37.1],
+    center: [35.3213, 37.0000],
+    size: 65 * 1024 * 1024, // 65 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/adana.pmtiles'
+  },
+  {
+    id: 'konya',
+    name: 'konya',
+    displayName: 'Konya',
+    bounds: [32.3, 37.7, 32.7, 38.1],
+    center: [32.4846, 37.8746],
+    size: 60 * 1024 * 1024, // 60 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/konya.pmtiles'
+  },
+  {
+    id: 'gaziantep',
+    name: 'gaziantep',
+    displayName: 'Gaziantep',
+    bounds: [37.2, 36.9, 37.5, 37.2],
+    center: [37.3825, 37.0662],
+    size: 55 * 1024 * 1024, // 55 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/gaziantep.pmtiles'
+  },
+  {
+    id: 'kayseri',
+    name: 'kayseri',
+    displayName: 'Kayseri',
+    bounds: [35.3, 38.6, 35.6, 38.8],
+    center: [35.4826, 38.7205],
+    size: 50 * 1024 * 1024, // 50 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/kayseri.pmtiles'
+  },
+  {
+    id: 'trabzon',
+    name: 'trabzon',
+    displayName: 'Trabzon',
+    bounds: [39.5, 40.9, 39.9, 41.1],
+    center: [39.7168, 41.0015],
+    size: 45 * 1024 * 1024, // 45 MB
+    zoomRange: { min: 0, max: 14 },
+    url: 'https://example.com/maps/trabzon.pmtiles'
   }
 ];
 

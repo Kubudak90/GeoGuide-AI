@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ChatInterface from './components/ChatInterface';
 import OfflineIndicator from './components/OfflineIndicator';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { MapChunk, Coordinates, PlaceDetails } from './types';
 import { getDirections, RouteData } from './services/mapService';
 
@@ -88,25 +89,27 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 font-sans">
-        {/* Offline status indicator */}
-        <OfflineIndicator />
+      <LanguageProvider>
+        <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 font-sans">
+          {/* Offline status indicator */}
+          <OfflineIndicator />
 
-        <ChatInterface
-          onMapChunksUpdate={setMapChunks}
-          userLocation={location}
-          locationError={locationError}
-          selectedPlace={selectedPlace}
-          onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
-          // Pass map state to ChatInterface
-          mapChunks={mapChunks}
-          routeData={routeData}
-          onSelectPlace={setSelectedPlace}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-          isFavorite={isFavorite}
-        />
-      </div>
+          <ChatInterface
+            onMapChunksUpdate={setMapChunks}
+            userLocation={location}
+            locationError={locationError}
+            selectedPlace={selectedPlace}
+            onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
+            // Pass map state to ChatInterface
+            mapChunks={mapChunks}
+            routeData={routeData}
+            onSelectPlace={setSelectedPlace}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            isFavorite={isFavorite}
+          />
+        </div>
+      </LanguageProvider>
     </ThemeProvider>
   );
 };
