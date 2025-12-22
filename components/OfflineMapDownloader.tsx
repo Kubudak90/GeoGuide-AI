@@ -141,7 +141,7 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
             >
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -155,7 +155,7 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="text-sm text-gray-600 mt-2 font-medium"
+                className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-medium"
               >
                 İnternet olmadan kullanmak için harita indirin
               </motion.p>
@@ -180,12 +180,12 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
           className="px-6 py-4 bg-white/50 border-b border-white/20"
         >
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-gray-700">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
               <motion.div
                 animate={{ rotate: [0, 5, -5, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
               >
-                <HardDrive size={18} className="text-purple-600" />
+                <HardDrive size={18} className="text-purple-600 dark:text-purple-400" />
               </motion.div>
               <span className="font-medium">Kullanılan Alan:</span>
             </div>
@@ -193,7 +193,7 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.4, type: "spring" }}
-              className="font-bold text-gray-900 text-base"
+              className="font-bold text-gray-900 dark:text-gray-100 text-base"
             >
               {offlineMapManager.formatBytes(storageUsed)}
             </motion.span>
@@ -232,7 +232,7 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
                   >
                     {/* Gradient border on hover */}
                     <div className="absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r from-purple-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
-                    <div className="absolute inset-[2px] rounded-2xl bg-white -z-10"></div>
+                    <div className="absolute inset-[2px] rounded-2xl bg-white dark:bg-slate-800 -z-10"></div>
 
                     <div className="flex items-start gap-4">
                       {/* Icon */}
@@ -258,8 +258,8 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-lg text-gray-900">{region.displayName}</h3>
-                        <p className="text-sm text-gray-600 mt-1 font-medium">
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{region.displayName}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-medium">
                           Boyut: {offlineMapManager.formatBytes(region.size)} • Zoom: {region.zoomRange.min}-{region.zoomRange.max}
                         </p>
 
@@ -361,7 +361,7 @@ const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ onClose }) 
           transition={{ delay: 0.5 }}
           className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-white/20"
         >
-          <p className="text-sm text-gray-800 font-medium">
+          <p className="text-sm text-gray-800 dark:text-gray-200 font-medium">
             <motion.span
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1, repeat: Infinity, repeatDelay: 3 }}

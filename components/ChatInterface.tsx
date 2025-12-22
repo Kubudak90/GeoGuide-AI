@@ -228,7 +228,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Mobile: Chat on Bottom (60%), Desktop: Chat on Left (Sidebar) */}
-      <div className="h-[60vh] w-full md:h-full md:w-[420px] md:order-1 flex flex-col bg-white/95 backdrop-blur-xl shadow-2xl z-10 border-r border-white/20">
+      <div className="h-[60vh] w-full md:h-full md:w-[420px] md:order-1 flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl z-10 border-r border-white/20 dark:border-slate-700/50">
 
         {/* Header - Glassmorphism */}
         <motion.div
@@ -248,18 +248,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <MapPin size={22} />
             </motion.div>
             <div>
-              <h1 className="font-bold text-gray-900 leading-tight text-lg gradient-text">GeoGuide AI</h1>
+              <h1 className="font-bold text-gray-900 dark:text-gray-100 leading-tight text-lg gradient-text">GeoGuide AI</h1>
               <div className="flex items-center gap-1">
                 {userLocation ? (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full"
+                    className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full"
                   >
                     <Navigation2 size={10} className="animate-pulse" /> GPS Active
                   </motion.span>
                 ) : (
-                  <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1">
                     <Navigation2 size={10} className="animate-spin" /> {locationError ? "GPS Error" : "Locating..."}
                   </span>
                 )}
@@ -275,7 +275,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowOfflineMaps(true)}
-              className="p-2.5 rounded-xl glass hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all"
+              className="p-2.5 rounded-xl glass hover:bg-blue-50 dark:hover:bg-blue-950/30 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
               title="Offline Maps"
             >
               <Download size={18} />
@@ -285,7 +285,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFavorites(true)}
-              className="p-2.5 rounded-xl glass hover:bg-red-50 text-gray-600 hover:text-red-600 transition-all relative"
+              className="p-2.5 rounded-xl glass hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all relative"
               title="Favorites"
             >
               <Heart size={18} className={favorites.length > 0 ? "fill-red-500 text-red-500" : ""} />
@@ -306,8 +306,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 onClick={() => setModelType(ModelType.MAPS_SEARCH)}
                 className={`p-2 rounded-lg transition-all ${
                   modelType === ModelType.MAPS_SEARCH
-                    ? 'bg-white shadow-lg text-emerald-600'
-                    : 'text-gray-400 hover:text-emerald-600'
+                    ? 'bg-white dark:bg-slate-700 shadow-lg text-emerald-600 dark:text-emerald-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400'
                 }`}
                 title="Map Mode"
               >
@@ -318,8 +318,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 onClick={() => setModelType(ModelType.REASONING)}
                 className={`p-2 rounded-lg transition-all ${
                   modelType === ModelType.REASONING
-                    ? 'bg-white shadow-lg text-purple-600'
-                    : 'text-gray-400 hover:text-purple-600'
+                    ? 'bg-white dark:bg-slate-700 shadow-lg text-purple-600 dark:text-purple-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400'
                 }`}
                 title="Reasoning Mode"
               >

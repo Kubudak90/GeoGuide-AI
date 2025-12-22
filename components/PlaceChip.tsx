@@ -20,7 +20,7 @@ const PlaceChip: React.FC<PlaceChipProps> = ({ place, onClick }) => {
         >
             {/* Gradient border effect */}
             <div className="absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r from-emerald-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
-            <div className="absolute inset-[2px] rounded-2xl bg-white -z-10"></div>
+            <div className="absolute inset-[2px] rounded-2xl bg-white dark:bg-slate-800 -z-10"></div>
 
             {/* Animated background gradient */}
             <motion.div
@@ -37,15 +37,15 @@ const PlaceChip: React.FC<PlaceChipProps> = ({ place, onClick }) => {
             </motion.div>
 
             <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-gray-900 text-sm truncate mb-0.5">{place.name}</h4>
-                <p className="text-xs text-gray-500 truncate font-medium">{place.category}</p>
+                <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm truncate mb-0.5">{place.name}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">{place.category}</p>
             </div>
 
             <motion.div
                 animate={{ x: [0, 4, 0] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
             >
-                <ArrowRight size={18} className="text-emerald-500 group-hover:text-emerald-600 transition-colors" />
+                <ArrowRight size={18} className="text-emerald-500 dark:text-emerald-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors" />
             </motion.div>
         </motion.button>
     );

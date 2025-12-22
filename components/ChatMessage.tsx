@@ -29,7 +29,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           transition={{ type: "spring", delay: 0.1 }}
           className={clsx(
             "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mt-1 shadow-md",
-            isUser ? "ml-3 gradient-ocean text-white" : "mr-3 glass text-emerald-600 border-2 border-emerald-100"
+            isUser ? "ml-3 gradient-ocean text-white" : "mr-3 glass text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-900/50"
           )}
         >
           {isUser ? (
@@ -55,7 +55,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             "flex flex-col p-4 rounded-2xl shadow-md text-sm leading-relaxed relative overflow-hidden",
             isUser
               ? "gradient-ocean text-white rounded-tr-sm"
-              : "glass text-gray-900 rounded-tl-sm"
+              : "glass text-gray-900 dark:text-gray-100 rounded-tl-sm"
           )}
         >
           {/* Subtle gradient overlay for bot messages */}
