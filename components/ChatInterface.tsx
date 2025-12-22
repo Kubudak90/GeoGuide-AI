@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
@@ -226,66 +227,104 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Mobile: Chat on Bottom (60%), Desktop: Chat on Left (Sidebar) */}
-      <div className="h-[60vh] w-full md:h-full md:w-[400px] md:order-1 flex flex-col bg-white shadow-xl z-10">
+      <div className="h-[60vh] w-full md:h-full md:w-[420px] md:order-1 flex flex-col bg-white/95 backdrop-blur-xl shadow-2xl z-10 border-r border-white/20">
 
-        {/* Header */}
-        <div className="flex-none bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm z-20">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-sm">
-              <MapPin size={20} />
-            </div>
+        {/* Header - Glassmorphism */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-none glass border-b border-white/20 px-4 py-4 flex items-center justify-between z-20 relative overflow-hidden"
+        >
+          {/* Gradient Background */}
+          <div className="absolute inset-0 gradient-ocean opacity-10"></div>
+
+          <div className="flex items-center gap-3 relative z-10">
+            <motion.div
+              whileHover={{ rotate: 360, scale: 1.1 }}
+              transition={{ duration: 0.6 }}
+              className="w-10 h-10 gradient-emerald rounded-xl flex items-center justify-center text-white shadow-lg glow"
+            >
+              <MapPin size={22} />
+            </motion.div>
             <div>
-              <h1 className="font-bold text-gray-800 leading-tight">GeoGuide AI</h1>
+              <h1 className="font-bold text-gray-900 leading-tight text-lg gradient-text">GeoGuide AI</h1>
               <div className="flex items-center gap-1">
                 {userLocation ? (
-                  <span className="text-[10px] text-emerald-600 font-medium flex items-center">
-                    <Navigation2 size={10} className="mr-1" /> GPS Active
-                  </span>
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full"
+                  >
+                    <Navigation2 size={10} className="animate-pulse" /> GPS Active
+                  </motion.span>
                 ) : (
-                  <span className="text-[10px] text-gray-400 font-medium flex items-center">
-                    <Navigation2 size={10} className="mr-1" /> {locationError ? "GPS Error" : "Locating..."}
+                  <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                    <Navigation2 size={10} className="animate-spin" /> {locationError ? "GPS Error" : "Locating..."}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Simple Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <button
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 relative z-10">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowOfflineMaps(true)}
-              className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+              className="p-2.5 rounded-xl glass hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all"
               title="Offline Maps"
             >
               <Download size={18} />
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowFavorites(true)}
-              className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
+              className="p-2.5 rounded-xl glass hover:bg-red-50 text-gray-600 hover:text-red-600 transition-all relative"
               title="Favorites"
             >
               <Heart size={18} className={favorites.length > 0 ? "fill-red-500 text-red-500" : ""} />
-            </button>
+              {favorites.length > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold"
+                >
+                  {favorites.length}
+                </motion.span>
+              )}
+            </motion.button>
 
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-              <button
+            <div className="flex items-center glass rounded-xl p-1">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setModelType(ModelType.MAPS_SEARCH)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}
+                className={`p-2 rounded-lg transition-all ${
+                  modelType === ModelType.MAPS_SEARCH
+                    ? 'bg-white shadow-lg text-emerald-600'
+                    : 'text-gray-400 hover:text-emerald-600'
+                }`}
                 title="Map Mode"
               >
                 <MapPin size={16} />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setModelType(ModelType.REASONING)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white shadow-sm text-purple-600' : 'text-gray-400'}`}
+                className={`p-2 rounded-lg transition-all ${
+                  modelType === ModelType.REASONING
+                    ? 'bg-white shadow-lg text-purple-600'
+                    : 'text-gray-400 hover:text-purple-600'
+                }`}
                 title="Reasoning Mode"
               >
                 <Sparkles size={16} />
-              </button>
+              </motion.button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide bg-slate-50/50">
@@ -310,31 +349,47 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="flex-none p-4 bg-white border-t border-gray-100">
-          <div className="relative flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all shadow-sm">
+        {/* Input Area - Modern Glass */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex-none p-4 glass border-t border-white/20 relative overflow-hidden"
+        >
+          {/* Subtle gradient background */}
+          <div className="absolute inset-0 gradient-emerald opacity-5"></div>
+
+          <div className="relative flex items-end gap-3 glass rounded-2xl p-3 focus-within:ring-2 focus-within:ring-emerald-400/50 focus-within:glow transition-all">
             <textarea
               ref={inputRef}
               value={inputValue}
               onChange={handleInputResize}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-400 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-base md:text-sm"
+              placeholder="Ask about places, restaurants, attractions..."
+              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-500 focus:ring-0 resize-none max-h-32 py-2 px-2 text-base md:text-sm font-medium"
               rows={1}
               style={{ minHeight: '44px' }}
             />
-            <button
+            <motion.button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
-              className={`flex-shrink-0 w-11 h-11 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() && !isLoading
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md active:scale-95'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+              whileHover={{ scale: inputValue.trim() && !isLoading ? 1.05 : 1 }}
+              whileTap={{ scale: inputValue.trim() && !isLoading ? 0.95 : 1 }}
+              className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all btn-modern ${
+                inputValue.trim() && !isLoading
+                  ? 'gradient-emerald text-white shadow-lg glow'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
             >
-              <Send size={18} />
-            </button>
+              <motion.div
+                animate={isLoading ? { rotate: 360 } : {}}
+                transition={{ duration: 1, repeat: isLoading ? Infinity : 0, ease: "linear" }}
+              >
+                <Send size={20} />
+              </motion.div>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Mobile Overlay Background */}
