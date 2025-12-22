@@ -12,6 +12,7 @@ import PlaceDetailModal from './PlaceDetailModal';
 
 import FavoritesList from './FavoritesList';
 import OfflineMapDownloader from './OfflineMapDownloader';
+import ThemeToggle from './ThemeToggle';
 import { Heart } from 'lucide-react';
 
 // Memoized components for better performance
@@ -268,6 +269,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 relative z-10">
+            <ThemeToggle />
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
