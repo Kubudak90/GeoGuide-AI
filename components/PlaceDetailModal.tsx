@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, Navigation2, Globe, Heart, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Navigation2, Globe, Heart, Star, Loader2 } from 'lucide-react';
 import { Place, PlaceDetails } from '../types';
+import { getWikipediaPhoto } from '../services/mapService';
 
 interface PlaceDetailModalProps {
     place: Place;
@@ -11,6 +12,18 @@ interface PlaceDetailModalProps {
 }
 
 const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onNavigate, onToggleFavorite, isFavorite }) => {
+    const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+    const [photoLoading, setPhotoLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPhoto = async () => {
+            setPhotoLoading(true);
+            const wikiPhoto = await getWikipediaPhoto(place.name);
+            setPhotoUrl(wikiPhoto);
+            setPhotoLoading(false);
+        };
+        fetchPhoto();
+    }, [place.name]);
     // Convert Place to PlaceDetails for compatibility with App.tsx state
     const placeDetails: PlaceDetails = {
         id: `place-${place.name}`, // Generate ID based on name if missing
@@ -40,9 +53,18 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
 
-                {/* Header Image Placeholder (could be dynamic later) */}
-                <div className="h-32 bg-emerald-600 relative">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                {/* Header Image */}
+                <div className="h-40 bg-emerald-600 relative overflow-hidden">
+                    {photoLoading ? (
+                        <div className="w-full h-full flex items-center justify-center bg-emerald-500">
+                            <Loader2 size={32} className="text-white animate-spin" />
+                        </div>
+                    ) : photoUrl ? (
+                        <img src={photoUrl} alt={place.name} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-700"></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-md transition-colors"
@@ -53,7 +75,7 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
                         <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full backdrop-blur-sm border border-white/30">
                             {place.category}
                         </span>
-                        <h2 className="text-2xl font-bold mt-1 shadow-black drop-shadow-md">{place.name}</h2>
+                        <h2 className="text-2xl font-bold mt-1 drop-shadow-lg">{place.name}</h2>
                     </div>
                 </div>
 

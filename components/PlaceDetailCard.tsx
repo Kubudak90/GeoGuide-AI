@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlaceDetails } from '../types';
-import { Star, X, Globe, Navigation, MessageSquare, DollarSign, MapPin, ArrowRightCircle } from 'lucide-react';
+import { Star, X, Globe, Navigation, MessageSquare, DollarSign, MapPin, ArrowRightCircle, Loader2 } from 'lucide-react';
+import { getWikipediaPhoto } from '../services/mapService';
 
 interface PlaceDetailCardProps {
   place: PlaceDetails;
@@ -9,15 +10,36 @@ interface PlaceDetailCardProps {
 }
 
 const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNavigate }) => {
-  // Use first photo URL if available
-  const photoUrl = place.photos && place.photos.length > 0 ? place.photos[0] : null;
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPhoto = async () => {
+      setPhotoLoading(true);
+      // First check if place has photos
+      if (place.photos && place.photos.length > 0) {
+        setPhotoUrl(place.photos[0]);
+        setPhotoLoading(false);
+        return;
+      }
+      // Otherwise fetch from Wikipedia
+      const wikiPhoto = await getWikipediaPhoto(place.name);
+      setPhotoUrl(wikiPhoto);
+      setPhotoLoading(false);
+    };
+    fetchPhoto();
+  }, [place.name, place.photos]);
 
   return (
     <div className="absolute right-4 bottom-4 md:right-6 md:bottom-6 w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
 
       {/* Header Image */}
       <div className="h-40 bg-gray-200 relative">
-        {photoUrl ? (
+        {photoLoading ? (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <Loader2 size={32} className="text-emerald-500 animate-spin" />
+          </div>
+        ) : photoUrl ? (
           <img src={photoUrl} alt={place.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-300">
