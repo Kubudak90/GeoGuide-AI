@@ -4,7 +4,7 @@ const maplibregl = (window as any).maplibregl;
 import { MapChunk, PlaceDetails, Coordinates } from '../types';
 import { RouteData } from '../services/mapService';
 import PlaceDetailCard from './PlaceDetailCard';
-import { AlertTriangle, Map as MapIcon, Car, Layers } from 'lucide-react';
+import { AlertTriangle, Map as MapIcon, Car, Layers, Navigation } from 'lucide-react';
 
 interface MapViewProps {
   mapChunks: MapChunk[];
@@ -29,6 +29,8 @@ const MapView: React.FC<MapViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
+  const hasInitialFlyRef = useRef(false);
 
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +255,45 @@ const MapView: React.FC<MapViewProps> = ({
 
   }, [showTraffic, isMapLoaded]);
 
+  // 5. Handle User Location - Fly to user and show marker
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapLoaded || !userLocation) return;
+
+    const map = mapInstanceRef.current;
+    const { longitude, latitude } = userLocation;
+
+    // Create or update user location marker (blue dot)
+    if (!userMarkerRef.current) {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="position: relative;">
+          <div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+          <div style="position: absolute; top: -4px; left: -4px; width: 28px; height: 28px; background: rgba(59, 130, 246, 0.3); border-radius: 50%; animation: pulse 2s infinite;"></div>
+        </div>
+      `;
+      el.style.width = '28px';
+      el.style.height = '28px';
+
+      userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([longitude, latitude])
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat([longitude, latitude]);
+    }
+
+    // Fly to user location on first location update
+    if (!hasInitialFlyRef.current) {
+      map.flyTo({
+        center: [longitude, latitude],
+        zoom: 14,
+        essential: true,
+        duration: 1500
+      });
+      hasInitialFlyRef.current = true;
+    }
+
+  }, [userLocation, isMapLoaded]);
+
 
   return (
     <div className="absolute inset-0 w-full h-full bg-gray-100">
@@ -268,6 +309,23 @@ const MapView: React.FC<MapViewProps> = ({
         >
           <Car size={20} />
         </button>
+        {userLocation && (
+          <button
+            onClick={() => {
+              if (mapInstanceRef.current && userLocation) {
+                mapInstanceRef.current.flyTo({
+                  center: [userLocation.longitude, userLocation.latitude],
+                  zoom: 15,
+                  essential: true
+                });
+              }
+            }}
+            className="p-2 rounded-lg shadow-md bg-white text-blue-600 hover:bg-blue-50 transition-colors"
+            title="My Location"
+          >
+            <Navigation size={20} />
+          </button>
+        )}
       </div>
 
       {/* Loading State */}
