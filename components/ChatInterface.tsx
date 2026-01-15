@@ -201,10 +201,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] w-full overflow-hidden">
 
       {/* Mobile: Map on Top (40%), Desktop: Map on Right (Flex Grow) */}
-      <div className="h-[40vh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200">
+      <div className="flex-shrink-0 h-[40dvh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200">
         <MapView
           mapChunks={mapChunks}
           userLocation={userLocation}
@@ -216,7 +216,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Mobile: Chat on Bottom (60%), Desktop: Chat on Left (Sidebar) */}
-      <div className="h-[60vh] w-full md:h-full md:w-[400px] md:order-1 flex flex-col bg-white shadow-xl z-10">
+      <div className="flex-shrink-0 h-[60dvh] w-full md:h-full md:w-[400px] md:min-w-[320px] md:max-w-[400px] md:order-1 flex flex-col bg-white shadow-xl z-10 overflow-hidden">
 
         {/* Header */}
         <div className="flex-none bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm z-20">
@@ -277,7 +277,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {/* Render Place Chips if available */}
               {msg.places && msg.places.length > 0 && (
-                <div className="flex flex-col gap-2 ml-12 animate-in slide-in-from-left-2 duration-300">
+                <div className="flex flex-col gap-2 ml-12 mr-4 animate-in slide-in-from-left-2 duration-300 overflow-hidden">
                   {msg.places.map((place, index) => (
                     <PlaceChip
                       key={index}
