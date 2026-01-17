@@ -5,7 +5,7 @@ import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
 import MapView from './MapView';
-import { RouteData } from '../services/mapService';
+import { RouteData, TransportMode } from '../services/mapService';
 import PlaceChip from './PlaceChip';
 import PlaceDetailModal from './PlaceDetailModal';
 
@@ -17,7 +17,7 @@ interface ChatInterfaceProps {
   userLocation?: Coordinates;
   locationError?: string | null;
   selectedPlace: PlaceDetails | null;
-  onNavigate: () => void;
+  onNavigate: (mode?: TransportMode) => void;
   // Map Props
   mapChunks: MapChunk[];
   routeData: RouteData | null;

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { PlaceDetails } from '../types';
-import { Star, X, Globe, Navigation, MessageSquare, DollarSign, MapPin, ArrowRightCircle, Loader2 } from 'lucide-react';
-import { getWikipediaPhoto } from '../services/mapService';
+import { Star, X, Globe, Navigation, MessageSquare, DollarSign, MapPin, Loader2, Car, Bike, Footprints, Bus } from 'lucide-react';
+import { getWikipediaPhoto, TransportMode } from '../services/mapService';
 
 interface PlaceDetailCardProps {
   place: PlaceDetails;
   onClose: () => void;
-  onNavigate?: () => void;
+  onNavigate?: (mode: TransportMode) => void;
 }
 
 const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNavigate }) => {
@@ -96,17 +96,47 @@ const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNav
           </div>
         )}
 
-        {/* Actions */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {onNavigate && (
-            <button
-              onClick={onNavigate}
-              className="col-span-2 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-emerald-200 shadow-md"
-            >
-              <ArrowRightCircle size={18} /> GO
-            </button>
-          )}
+        {/* Transport Mode Actions */}
+        {onNavigate && (
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-2 font-medium">Navigate with:</p>
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={() => onNavigate('driving')}
+                className="flex flex-col items-center justify-center gap-1 bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-emerald-200 shadow-md"
+              >
+                <Car size={20} />
+                <span>Car</span>
+              </button>
+              <button
+                onClick={() => onNavigate('cycling')}
+                className="flex flex-col items-center justify-center gap-1 bg-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-blue-200 shadow-md"
+              >
+                <Bike size={20} />
+                <span>Bike</span>
+              </button>
+              <button
+                onClick={() => onNavigate('walking')}
+                className="flex flex-col items-center justify-center gap-1 bg-orange-500 text-white py-3 rounded-xl text-xs font-bold hover:bg-orange-600 transition-all shadow-orange-200 shadow-md"
+              >
+                <Footprints size={20} />
+                <span>Walk</span>
+              </button>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name + " " + place.formatted_address)}&travelmode=transit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center justify-center gap-1 bg-purple-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-purple-700 transition-all shadow-purple-200 shadow-md"
+              >
+                <Bus size={20} />
+                <span>Transit</span>
+              </a>
+            </div>
+          </div>
+        )}
 
+        {/* Other Actions */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {place.website && (
             <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
               <Globe size={16} /> Website

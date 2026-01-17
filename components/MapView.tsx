@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // import maplibregl from 'maplibre-gl'; // Using CDN
 const maplibregl = (window as any).maplibregl;
 import { MapChunk, PlaceDetails, Coordinates } from '../types';
-import { RouteData } from '../services/mapService';
+import { RouteData, TransportMode } from '../services/mapService';
 import PlaceDetailCard from './PlaceDetailCard';
 import { AlertTriangle, Map as MapIcon, Car, Layers, Navigation } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface MapViewProps {
   selectedPlace: PlaceDetails | null;
   onSelectPlace: (place: PlaceDetails | null) => void;
   routeData: RouteData | null;
-  onNavigate?: (place: PlaceDetails) => void;
+  onNavigate?: (mode?: TransportMode) => void;
 }
 
 // User provided MapTiler Key
@@ -174,8 +174,18 @@ const MapView: React.FC<MapViewProps> = ({
 
     const map = mapInstanceRef.current;
 
+    // Route colors based on transport mode
+    const routeColors: Record<TransportMode, string> = {
+      driving: '#10b981',  // emerald
+      cycling: '#3b82f6',  // blue
+      walking: '#f97316'   // orange
+    };
+    const lineColor = routeColors[routeData.mode] || '#3b82f6';
+
     if (map.getSource('route')) {
       (map.getSource('route') as any).setData(routeData.geometry);
+      // Update line color for existing layer
+      map.setPaintProperty('route', 'line-color', lineColor);
     } else {
       map.addSource('route', {
         type: 'geojson',
@@ -191,7 +201,7 @@ const MapView: React.FC<MapViewProps> = ({
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#3b82f6',
+          'line-color': lineColor,
           'line-width': 6,
           'line-opacity': 0.8
         }
@@ -355,7 +365,7 @@ const MapView: React.FC<MapViewProps> = ({
         <PlaceDetailCard
           place={selectedPlace}
           onClose={() => onSelectPlace(null)}
-          onNavigate={() => onNavigate && onNavigate(selectedPlace)}
+          onNavigate={(mode) => onNavigate && onNavigate(mode)}
         />
       )}
     </div>

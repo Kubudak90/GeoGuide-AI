@@ -2,10 +2,13 @@ import { Coordinates } from '../types';
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || '';
 
+export type TransportMode = 'driving' | 'cycling' | 'walking';
+
 export interface RouteData {
     geometry: any; // GeoJSON geometry
     duration: number; // seconds
     distance: number; // meters
+    mode: TransportMode;
 }
 
 // Wikipedia photo cache
@@ -53,14 +56,25 @@ export const getWikipediaPhoto = async (placeName: string): Promise<string | nul
     }
 };
 
-export const getDirections = async (start: Coordinates, end: Coordinates): Promise<RouteData | null> => {
+// OSRM profile mapping
+const osrmProfiles: Record<TransportMode, string> = {
+    driving: 'driving',
+    cycling: 'bike',
+    walking: 'foot'
+};
+
+export const getDirections = async (
+    start: Coordinates,
+    end: Coordinates,
+    mode: TransportMode = 'driving'
+): Promise<RouteData | null> => {
     try {
         const startStr = `${start.longitude},${start.latitude}`;
         const endStr = `${end.longitude},${end.latitude}`;
+        const profile = osrmProfiles[mode];
 
         // Using OSRM public demo server (free, no key required)
-        // Note: MapTiler routing requires a specific plan/endpoint.
-        const url = `https://router.project-osrm.org/route/v1/driving/${startStr};${endStr}?overview=full&geometries=geojson`;
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${startStr};${endStr}?overview=full&geometries=geojson`;
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -75,7 +89,8 @@ export const getDirections = async (start: Coordinates, end: Coordinates): Promi
             return {
                 geometry: route.geometry,
                 duration: route.duration,
-                distance: route.distance
+                distance: route.distance,
+                mode: mode
             };
         }
 

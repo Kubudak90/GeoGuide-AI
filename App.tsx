@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ChatInterface from './components/ChatInterface';
 import { MapChunk, Coordinates, PlaceDetails } from './types';
-import { getDirections, RouteData } from './services/mapService';
+import { getDirections, RouteData, TransportMode } from './services/mapService';
 
 const App: React.FC = () => {
   const [mapChunks, setMapChunks] = useState<MapChunk[]>([]);
@@ -66,16 +66,20 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const handleNavigate = async (place: PlaceDetails) => {
+  const handleNavigate = async (place: PlaceDetails, mode: TransportMode = 'driving') => {
     if (!location) {
       alert("Please enable location services to use navigation.");
       return;
     }
 
-    const route = await getDirections(location, {
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng
-    });
+    const route = await getDirections(
+      location,
+      {
+        latitude: place.geometry.location.lat,
+        longitude: place.geometry.location.lng
+      },
+      mode
+    );
 
     if (route) {
       setRouteData(route);
@@ -91,7 +95,7 @@ const App: React.FC = () => {
         userLocation={location}
         locationError={locationError}
         selectedPlace={selectedPlace}
-        onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
+        onNavigate={(mode?: TransportMode) => selectedPlace && handleNavigate(selectedPlace, mode)}
         // Pass map state to ChatInterface
         mapChunks={mapChunks}
         routeData={routeData}
