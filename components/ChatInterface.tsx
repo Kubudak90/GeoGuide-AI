@@ -1,6 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, MapPin, Sparkles, Navigation2, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, MapPin, Sparkles, Navigation2, Heart, Sun, Moon, Mic, MicOff } from 'lucide-react';
 import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
@@ -8,9 +8,15 @@ import MapView from './MapView';
 import { RouteData } from '../services/mapService';
 import PlaceChip from './PlaceChip';
 import PlaceDetailModal from './PlaceDetailModal';
-
 import FavoritesList from './FavoritesList';
-import { Heart } from 'lucide-react';
+import FilterBar from './FilterBar';
+import SearchHistory from './SearchHistory';
+import RouteInfoPanel, { TransportMode } from './RouteInfoPanel';
+import { PlaceChipSkeleton } from './Skeleton';
+import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../i18n';
+import { useSearchHistory } from '../hooks/useSearchHistory';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
@@ -18,14 +24,15 @@ interface ChatInterfaceProps {
   locationError?: string | null;
   selectedPlace: PlaceDetails | null;
   onNavigate: () => void;
-  // Map Props
   mapChunks: MapChunk[];
   routeData: RouteData | null;
   onSelectPlace: (place: PlaceDetails | null) => void;
-  // Favorites Props
   favorites: PlaceDetails[];
   onToggleFavorite: (place: PlaceDetails) => void;
   isFavorite: (place: PlaceDetails) => boolean;
+  transportMode: TransportMode;
+  onModeChange: (mode: TransportMode) => void;
+  onCancelRoute: () => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -39,42 +46,84 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSelectPlace,
   favorites,
   onToggleFavorite,
-  isFavorite
+  isFavorite,
+  transportMode,
+  onModeChange,
+  onCancelRoute,
 }) => {
+  const { t, locale, setLocale } = useTranslation();
+  const { toggleTheme, isDark } = useTheme();
+  const { history: searchHistoryItems, addSearch, clearHistory, removeItem } = useSearchHistory();
+  const speechLang = locale === 'tr' ? 'tr-TR' : 'en-US';
+  const { isListening, transcript, isSupported: voiceSupported, startListening, stopListening } = useSpeechRecognition(speechLang);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'model',
-      text: "Hello! I'm your GeoGuide. Ask me to find restaurants, sights, or businesses, and I'll show them on the map.",
+      text: t('welcome_message'),
       timestamp: Date.now()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [modelType, setModelType] = useState<ModelType>(ModelType.MAPS_SEARCH);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedChipPlace, setSelectedChipPlace] = useState<Place | null>(null);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  // Voice transcript → input
+  useEffect(() => {
+    if (transcript) {
+      setInputValue(transcript);
+    }
+  }, [transcript]);
 
-    const userText = inputValue.trim();
+  // Auto-send after voice recognition ends
+  useEffect(() => {
+    if (!isListening && transcript.trim()) {
+      handleSendMessage(transcript.trim());
+    }
+  }, [isListening]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedChipPlace) setSelectedChipPlace(null);
+        else if (showFavorites) setShowFavorites(false);
+        setShowSearchHistory(false);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        toggleTheme();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedChipPlace, showFavorites, toggleTheme]);
+
+  const handleSendMessage = useCallback(async (overrideText?: string) => {
+    const userText = (overrideText || inputValue).trim();
+    if (!userText || isLoading) return;
+
     setInputValue('');
+    setShowSearchHistory(false);
+    addSearch(userText);
 
-    // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
     }
@@ -95,7 +144,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'model',
-          text: `Navigating to ${selectedPlace.name}...`,
+          text: `${t('navigating_to')} ${selectedPlace.name}...`,
           timestamp: Date.now()
         }]);
         return;
@@ -103,7 +152,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'model',
-          text: "Please select a place on the map first.",
+          text: t('select_place_first'),
           timestamp: Date.now()
         }]);
         return;
@@ -112,7 +161,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     setIsLoading(true);
 
-    // Add placeholder loading message
     const loadingMessageId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, {
       id: loadingMessageId,
@@ -123,40 +171,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }]);
 
     try {
-      const response = await sendMessageToGemini(messages, userText, modelType, userLocation, selectedPlace);
+      const response = await sendMessageToGemini(messages, userText, modelType, userLocation, selectedPlace, activeFilter);
 
-      // If we have map chunks, update the main map (Legacy support)
       if (response.groundingMetadata?.mapChunks && response.groundingMetadata.mapChunks.length > 0) {
         onMapChunksUpdate(response.groundingMetadata.mapChunks);
       }
 
-      // Replace loading message with actual response
       setMessages(prev => prev.map(msg =>
         msg.id === loadingMessageId
           ? {
             ...msg,
             text: response.text,
             groundingMetadata: response.groundingMetadata,
-            places: response.places, // Store structured places
+            places: response.places,
             isLoading: false
           }
           : msg
       ));
 
-    } catch (error) {
+    } catch {
       setMessages(prev => prev.map(msg =>
         msg.id === loadingMessageId
-          ? {
-            ...msg,
-            text: "I'm sorry, I encountered an error. Please try again.",
-            isLoading: false
-          }
+          ? { ...msg, text: t('error_response'), isLoading: false }
           : msg
       ));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputValue, isLoading, messages, modelType, userLocation, selectedPlace, activeFilter, onMapChunksUpdate, onNavigate, addSearch, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -168,43 +210,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight} px`;
+    e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  const handlePlaceClick = (place: Place) => {
+  const handlePlaceClick = useCallback((place: Place) => {
     setSelectedChipPlace(place);
-  };
+  }, []);
 
-  const handleNavigateToPlace = (place: Place) => {
-    // Close modal
+  const handleNavigateToPlace = useCallback((place: Place) => {
     setSelectedChipPlace(null);
-
-    // Convert Place to PlaceDetails for MapView compatibility
     const placeDetails: PlaceDetails = {
-      id: `place - ${Date.now()} `, // Generate temp ID
+      id: `place-${Date.now()}`,
       name: place.name,
-      formatted_address: '', // We might not have full address from JSON, but coords are key
-      geometry: {
-        location: place.coordinates
-      },
+      formatted_address: '',
+      geometry: { location: place.coordinates },
       website: place.website || undefined
     };
-
-    // Select place on map (triggers flyTo in MapView)
     onSelectPlace(placeDetails);
-
-    // Trigger navigation if needed (optional, or user clicks "Go" again)
-    // For now, let's just select it so it shows on map. 
-    // If we want to start routing immediately:
-    // onNavigate(); // This would require selectedPlace to be updated first, which happens via onSelectPlace prop but might be async in App.tsx.
-    // Better to let user see it on map first.
-  };
+  }, [onSelectPlace]);
 
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] w-full overflow-hidden">
 
-      {/* Mobile: Map on Top (40%), Desktop: Map on Right (Flex Grow) */}
-      <div className="flex-shrink-0 h-[40dvh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200">
+      {/* Map Area */}
+      <div className="flex-shrink-0 h-[40dvh] w-full md:h-full md:flex-1 md:order-2 relative bg-gray-200 dark:bg-gray-900">
         <MapView
           mapChunks={mapChunks}
           userLocation={userLocation}
@@ -213,55 +242,84 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           routeData={routeData}
           onNavigate={onNavigate}
         />
+        {routeData && (
+          <RouteInfoPanel
+            distance={routeData.distance}
+            duration={routeData.duration}
+            mode={transportMode}
+            onModeChange={onModeChange}
+            onCancel={onCancelRoute}
+          />
+        )}
       </div>
 
-      {/* Mobile: Chat on Bottom (60%), Desktop: Chat on Left (Sidebar) */}
-      <div className="flex-shrink-0 h-[60dvh] w-full md:h-full md:w-[400px] md:min-w-[320px] md:max-w-[400px] md:order-1 flex flex-col bg-white shadow-xl z-10 overflow-hidden">
+      {/* Chat Sidebar */}
+      <div className="flex-shrink-0 h-[60dvh] w-full md:h-full md:w-[400px] md:min-w-[320px] md:max-w-[400px] md:order-1 flex flex-col bg-white dark:bg-gray-900 shadow-xl z-10 overflow-hidden">
 
         {/* Header */}
-        <div className="flex-none bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm z-20">
+        <div className="flex-none bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm z-20">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-sm">
               <MapPin size={20} />
             </div>
             <div>
-              <h1 className="font-bold text-gray-800 leading-tight">GeoGuide AI</h1>
+              <h1 className="font-bold text-gray-800 dark:text-gray-100 leading-tight">{t('app_name')}</h1>
               <div className="flex items-center gap-1">
                 {userLocation ? (
                   <span className="text-[10px] text-emerald-600 font-medium flex items-center">
-                    <Navigation2 size={10} className="mr-1" /> GPS Active
+                    <Navigation2 size={10} className="mr-1" /> {t('gps_active')}
                   </span>
                 ) : (
                   <span className="text-[10px] text-gray-400 font-medium flex items-center">
-                    <Navigation2 size={10} className="mr-1" /> {locationError ? "GPS Error" : "Locating..."}
+                    <Navigation2 size={10} className="mr-1" /> {locationError ? t('gps_error') : t('locating')}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Simple Mode Toggle */}
-          <div className="flex items-center gap-2">
+          {/* Header Actions */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setLocale(locale === 'en' ? 'tr' : 'en')}
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold"
+              title={locale === 'en' ? 'Türkçe' : 'English'}
+            >
+              {locale === 'en' ? 'TR' : 'EN'}
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title={isDark ? t('light_mode') : t('dark_mode')}
+              aria-label={isDark ? t('light_mode') : t('dark_mode')}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             <button
               onClick={() => setShowFavorites(true)}
-              className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Favorites"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+              title={t('favorites')}
+              aria-label={t('favorites')}
             >
               <Heart size={18} className={favorites.length > 0 ? "fill-red-500 text-red-500" : ""} />
             </button>
 
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
               <button
                 onClick={() => setModelType(ModelType.MAPS_SEARCH)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}
-                title="Map Mode"
+                className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white dark:bg-gray-700 shadow-sm text-emerald-600' : 'text-gray-400'}`}
+                title={t('maps_search')}
+                aria-label={t('maps_search')}
               >
                 <MapPin size={16} />
               </button>
               <button
                 onClick={() => setModelType(ModelType.REASONING)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white shadow-sm text-purple-600' : 'text-gray-400'}`}
-                title="Reasoning Mode"
+                className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600' : 'text-gray-400'}`}
+                title={t('reasoning')}
+                aria-label={t('reasoning')}
               >
                 <Sparkles size={16} />
               </button>
@@ -269,13 +327,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         </div>
 
+        {/* Filter Bar */}
+        <FilterBar activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide bg-slate-50/50 dark:bg-gray-950" role="log" aria-live="polite">
           {messages.map(msg => (
             <div key={msg.id} className="flex flex-col gap-2 mb-4">
               <ChatMessage message={msg} />
 
-              {/* Render Place Chips if available */}
+              {msg.isLoading && (
+                <div className="flex flex-col gap-2 ml-12 mr-4">
+                  <PlaceChipSkeleton />
+                  <PlaceChipSkeleton />
+                </div>
+              )}
+
               {msg.places && msg.places.length > 0 && (
                 <div className="flex flex-col gap-2 ml-12 mr-4 animate-in slide-in-from-left-2 duration-300 overflow-hidden">
                   {msg.places.map((place, index) => (
@@ -283,6 +350,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       key={index}
                       place={place}
                       onClick={handlePlaceClick}
+                      userLocation={userLocation}
                     />
                   ))}
                 </div>
@@ -293,39 +361,62 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
 
         {/* Input Area */}
-        <div className="flex-none p-4 bg-white border-t border-gray-100">
-          <div className="relative flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all shadow-sm">
+        <div className="flex-none p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 relative">
+          <SearchHistory
+            history={searchHistoryItems}
+            onSelect={(query) => {
+              setInputValue(query);
+              setShowSearchHistory(false);
+              handleSendMessage(query);
+            }}
+            onRemove={removeItem}
+            onClear={clearHistory}
+            visible={showSearchHistory}
+          />
+
+          <div className="relative flex items-end gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all shadow-sm">
+            {voiceSupported && (
+              <button
+                onClick={isListening ? stopListening : startListening}
+                className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                  isListening
+                    ? 'bg-red-500 text-white animate-pulse-ring'
+                    : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
+                }`}
+                title={t('voice_search')}
+                aria-label={isListening ? t('listening') : t('voice_search')}
+              >
+                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+              </button>
+            )}
+
             <textarea
               ref={inputRef}
               value={inputValue}
               onChange={handleInputResize}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-400 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-base md:text-sm"
+              onFocus={() => setShowSearchHistory(true)}
+              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+              placeholder={isListening ? t('listening') : t('type_message')}
+              className="w-full bg-transparent border-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-base md:text-sm"
               rows={1}
               style={{ minHeight: '44px' }}
+              aria-label={t('type_message')}
             />
             <button
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               disabled={!inputValue.trim() || isLoading}
               className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() && !isLoading
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
+              aria-label={t('send_message')}
             >
               <Send size={18} />
             </button>
           </div>
         </div>
       </div>
-
-      {/* Mobile Overlay Background */}
-      {isSidebarOpen && (
-        <div
-          className="md:hidden absolute inset-0 bg-black/20 z-20"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
 
       {/* Place Detail Modal */}
       {selectedChipPlace && (
@@ -345,24 +436,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           onClose={() => setShowFavorites(false)}
           onSelect={(place) => {
             setShowFavorites(false);
-            // Convert PlaceDetails to Place for handleNavigateToPlace
-            // We need to ensure place has coordinates. PlaceDetails has geometry.location
             const placeForNav: Place = {
               name: place.name,
               coordinates: place.geometry.location,
               short_description: place.short_description || '',
-              category: place.category || 'Saved Place',
+              category: place.category || t('saved_place'),
               website: place.website || null
             };
             handleNavigateToPlace(placeForNav);
           }}
-          onRemove={(place: any) => onToggleFavorite(place)}
+          onRemove={(place) => onToggleFavorite(place)}
         />
       )}
-
     </div>
   );
 };
 
 export default ChatInterface;
-

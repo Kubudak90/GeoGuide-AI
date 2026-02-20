@@ -1,104 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import ChatInterface from './components/ChatInterface';
-import { MapChunk, Coordinates, PlaceDetails } from './types';
+import { MapChunk, PlaceDetails } from './types';
 import { getDirections, RouteData } from './services/mapService';
+import { useLocation } from './hooks/useLocation';
+import { useFavorites } from './hooks/useFavorites';
+import { useToast } from './contexts/ToastContext';
+import { useTranslation } from './i18n';
+import { TransportMode } from './components/RouteInfoPanel';
 
 const App: React.FC = () => {
   const [mapChunks, setMapChunks] = useState<MapChunk[]>([]);
-  const [location, setLocation] = useState<Coordinates | undefined>(undefined);
-  const [locationError, setLocationError] = useState<string | null>(null);
-
-  // Lifted State
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [favorites, setFavorites] = useState<PlaceDetails[]>(() => {
-    const saved = localStorage.getItem('favorites');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [transportMode, setTransportMode] = useState<TransportMode>('driving');
 
-  useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  const { location, locationError } = useLocation();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { showToast } = useToast();
+  const { t } = useTranslation();
 
-  const toggleFavorite = (place: PlaceDetails) => {
-    setFavorites(prev => {
-      const exists = prev.some(p => p.name === place.name); // Simple check by name for now
-      if (exists) {
-        return prev.filter(p => p.name !== place.name);
-      } else {
-        return [...prev, place];
-      }
-    });
-  };
-
-  const isFavorite = (place: PlaceDetails) => {
-    return favorites.some(p => p.name === place.name);
-  };
-
-  // Initialize Location Watch on Mount
-  useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setLocationError("Unsupported");
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationError(null);
-      },
-      (error) => {
-        console.warn("Location access denied or failed", error);
-        setLocationError("Access denied");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+  const handleToggleFavorite = useCallback((place: PlaceDetails) => {
+    const wasFavorite = isFavorite(place);
+    toggleFavorite(place);
+    showToast(
+      wasFavorite ? t('removed_from_favorites') : t('added_to_favorites'),
+      wasFavorite ? 'info' : 'success'
     );
+  }, [toggleFavorite, isFavorite, showToast, t]);
 
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-    };
-  }, []);
-
-  const handleNavigate = async (place: PlaceDetails) => {
+  const handleNavigate = useCallback(async (place: PlaceDetails) => {
     if (!location) {
-      alert("Please enable location services to use navigation.");
+      showToast(t('enable_location'), 'warning');
       return;
     }
 
-    const route = await getDirections(location, {
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng
-    });
+    const route = await getDirections(
+      location,
+      { latitude: place.geometry.location.lat, longitude: place.geometry.location.lng },
+      transportMode
+    );
 
     if (route) {
       setRouteData(route);
+      showToast(t('route_calculated'), 'success');
     } else {
-      alert("Could not find a route.");
+      showToast(t('route_not_found'), 'error');
     }
-  };
+  }, [location, transportMode, showToast, t]);
+
+  const handleModeChange = useCallback(async (mode: TransportMode) => {
+    setTransportMode(mode);
+    if (selectedPlace && location) {
+      const route = await getDirections(
+        location,
+        { latitude: selectedPlace.geometry.location.lat, longitude: selectedPlace.geometry.location.lng },
+        mode
+      );
+      if (route) {
+        setRouteData(route);
+      }
+    }
+  }, [selectedPlace, location]);
+
+  const handleCancelRoute = useCallback(() => {
+    setRouteData(null);
+  }, []);
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 font-sans">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100 dark:bg-gray-950 font-sans">
       <ChatInterface
         onMapChunksUpdate={setMapChunks}
         userLocation={location}
         locationError={locationError}
         selectedPlace={selectedPlace}
         onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
-        // Pass map state to ChatInterface
         mapChunks={mapChunks}
         routeData={routeData}
         onSelectPlace={setSelectedPlace}
         favorites={favorites}
-        onToggleFavorite={toggleFavorite}
+        onToggleFavorite={handleToggleFavorite}
         isFavorite={isFavorite}
+        transportMode={transportMode}
+        onModeChange={handleModeChange}
+        onCancelRoute={handleCancelRoute}
       />
     </div>
   );

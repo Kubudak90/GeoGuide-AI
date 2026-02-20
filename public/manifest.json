@@ -1,0 +1,22 @@
+{
+  "name": "GeoGuide AI",
+  "short_name": "GeoGuide",
+  "description": "Your intelligent map companion powered by Gemini AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%23059669'/%3E%3Cpath d='M96 32C72.52 32 53.33 51.19 53.33 74.67 53.33 106.67 96 160 96 160s42.67-53.33 42.67-85.33C138.67 51.19 119.48 32 96 32z' fill='white'/%3E%3Ccircle cx='96' cy='74.67' r='16' fill='%23059669'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='64' fill='%23059669'/%3E%3Cpath d='M256 85.33C193.39 85.33 142.22 136.5 142.22 199.11 142.22 284.44 256 426.67 256 426.67s113.78-142.22 113.78-227.56C369.78 136.5 318.61 85.33 256 85.33z' fill='white'/%3E%3Ccircle cx='256' cy='199.11' r='42.67' fill='%23059669'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
