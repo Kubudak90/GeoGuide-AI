@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 const maplibregl = (window as any).maplibregl;
 import { MapChunk, PlaceDetails, Coordinates } from '../types';
 import { RouteData } from '../services/mapService';
@@ -14,7 +14,7 @@ interface MapViewProps {
   selectedPlace: PlaceDetails | null;
   onSelectPlace: (place: PlaceDetails | null) => void;
   routeData: RouteData | null;
-  onNavigate?: (place: PlaceDetails) => void;
+  onNavigate?: () => void;
 }
 
 const MAPTILER_KEY = env.VITE_MAPTILER_KEY;
@@ -33,6 +33,11 @@ const MapView: React.FC<MapViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const markerAbortRef = useRef<AbortController | null>(null);
+
+  // Refs for callbacks to avoid re-running marker effect when callbacks change
+  const onSelectPlaceRef = useRef(onSelectPlace);
+  onSelectPlaceRef.current = onSelectPlace;
 
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +105,13 @@ const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapLoaded || mapChunks.length === 0) return;
 
+    // Abort previous marker listeners
+    markerAbortRef.current?.abort();
+    const abortController = new AbortController();
+    markerAbortRef.current = abortController;
+
     const fetchAndPlotPlaces = async () => {
+      // Remove old markers from the map
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
 
@@ -108,6 +119,9 @@ const MapView: React.FC<MapViewProps> = ({
       let hasPoints = false;
 
       for (const chunk of mapChunks) {
+        // Skip if effect was cleaned up
+        if (abortController.signal.aborted) return;
+
         const query = `${chunk.title} ${chunk.address || ''}`;
 
         try {
@@ -116,7 +130,10 @@ const MapView: React.FC<MapViewProps> = ({
           if (geocodeCache.has(query)) {
             feature = geocodeCache.get(query)!;
           } else {
-            const response = await fetch(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${MAPTILER_KEY}&limit=1`);
+            const response = await fetch(
+              `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${MAPTILER_KEY}&limit=1`,
+              { signal: abortController.signal }
+            );
             const data = await response.json();
             if (!data.features || data.features.length === 0) continue;
             const f = data.features[0];
@@ -149,17 +166,19 @@ const MapView: React.FC<MapViewProps> = ({
             .setLngLat([lng, lat])
             .addTo(mapInstanceRef.current!);
 
+          // Use AbortController signal to auto-remove listeners on cleanup
           el.addEventListener('click', (e) => {
             e.stopPropagation();
-            onSelectPlace(place);
+            onSelectPlaceRef.current(place);
             mapInstanceRef.current?.flyTo({ center: [lng, lat], zoom: 15, essential: true });
-          });
+          }, { signal: abortController.signal });
 
           markersRef.current.push(marker);
           bounds.extend([lng, lat]);
           hasPoints = true;
-        } catch {
-          // Geocoding failed for this chunk
+        } catch (err: any) {
+          // Ignore abort errors, log others silently
+          if (err?.name === 'AbortError') return;
         }
       }
 
@@ -172,7 +191,11 @@ const MapView: React.FC<MapViewProps> = ({
     };
 
     fetchAndPlotPlaces();
-  }, [mapChunks, isMapLoaded, onSelectPlace]);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [mapChunks, isMapLoaded]);
 
   // Handle route display
   useEffect(() => {
@@ -197,6 +220,10 @@ const MapView: React.FC<MapViewProps> = ({
     const bounds = coordinates.reduce((b: any, coord: any) => b.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
     map.fitBounds(bounds, { padding: 50 });
   }, [routeData, isMapLoaded]);
+
+  const handleClosePlace = useCallback(() => {
+    onSelectPlaceRef.current(null);
+  }, []);
 
   // Handle traffic layer
   useEffect(() => {
@@ -239,7 +266,7 @@ const MapView: React.FC<MapViewProps> = ({
       <div className="absolute top-4 right-14 flex flex-col gap-2 z-10">
         <button
           onClick={() => setShowTraffic(!showTraffic)}
-          className={`p-2 rounded-lg shadow-md transition-colors ${showTraffic ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          className={`p-2.5 rounded-lg shadow-md transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${showTraffic ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
           title={t('toggle_traffic')}
           aria-label={t('toggle_traffic')}
         >
@@ -271,8 +298,8 @@ const MapView: React.FC<MapViewProps> = ({
       {selectedPlace && (
         <PlaceDetailCard
           place={selectedPlace}
-          onClose={() => onSelectPlace(null)}
-          onNavigate={() => onNavigate && onNavigate(selectedPlace)}
+          onClose={handleClosePlace}
+          onNavigate={onNavigate}
           userLocation={userLocation}
         />
       )}

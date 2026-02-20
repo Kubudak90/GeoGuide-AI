@@ -13,7 +13,16 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     // Fix for __publicField error in newer libraries
     build: {
-      target: 'esnext'
+      target: 'esnext',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-genai': ['@google/genai'],
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-icons': ['lucide-react'],
+          }
+        }
+      }
     },
     esbuild: {
       target: 'esnext'

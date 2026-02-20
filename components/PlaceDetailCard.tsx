@@ -31,10 +31,10 @@ const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({ place, onClose, onNav
         <PhotoGallery photos={place.photos || []} name={place.name} />
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors z-10"
+          className="absolute top-2 right-2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-colors z-10"
           aria-label={t('close')}
         >
-          <X size={16} />
+          <X size={18} />
         </button>
       </div>
 

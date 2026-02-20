@@ -32,8 +32,9 @@ const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onN
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
+          onClick={onClose}
         >
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="h-32 bg-emerald-600 relative">

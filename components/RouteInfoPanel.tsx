@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Footprints, Bike, X, Clock, Ruler } from 'lucide-react';
+import { Car, Footprints, Bike, X, Clock, Ruler, Loader2 } from 'lucide-react';
 import { useTranslation } from '../i18n';
 
 export type TransportMode = 'driving' | 'walking' | 'cycling';
@@ -10,6 +10,7 @@ interface RouteInfoPanelProps {
   mode: TransportMode;
   onModeChange: (mode: TransportMode) => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 const MODE_ICONS = {
@@ -32,7 +33,7 @@ const formatDistance = (meters: number): string => {
   return `${(meters / 1000).toFixed(1)} km`;
 };
 
-const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({ distance, duration, mode, onModeChange, onCancel }) => {
+const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({ distance, duration, mode, onModeChange, onCancel, isLoading }) => {
   const { t } = useTranslation();
 
   return (
@@ -46,11 +47,12 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({ distance, duration, mod
             <button
               key={m}
               onClick={() => onModeChange(m)}
+              disabled={isLoading}
               className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 border-b-2 border-emerald-600'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
+              } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
             >
               <Icon size={18} />
               {t(m)}
@@ -60,7 +62,12 @@ const RouteInfoPanel: React.FC<RouteInfoPanelProps> = ({ distance, duration, mod
       </div>
 
       {/* Route Info */}
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-10">
+            <Loader2 size={20} className="animate-spin text-emerald-600" />
+          </div>
+        )}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
             <Clock size={16} className="text-emerald-600" />

@@ -1,14 +1,12 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, MapPin, Sparkles, Navigation2, Heart, Sun, Moon, Mic, MicOff } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Send, MapPin, Sparkles, Navigation2, Heart, Sun, Moon, Mic, MicOff, Loader2 } from 'lucide-react';
 import { Message, ModelType, Coordinates, MapChunk, PlaceDetails, Place } from '../types';
 import ChatMessage from './ChatMessage';
 import { sendMessageToGemini } from '../services/geminiService';
 import MapView from './MapView';
 import { RouteData } from '../services/mapService';
 import PlaceChip from './PlaceChip';
-import PlaceDetailModal from './PlaceDetailModal';
-import FavoritesList from './FavoritesList';
 import FilterBar from './FilterBar';
 import SearchHistory from './SearchHistory';
 import RouteInfoPanel, { TransportMode } from './RouteInfoPanel';
@@ -18,6 +16,10 @@ import { useTranslation } from '../i18n';
 import { useSearchHistory } from '../hooks/useSearchHistory';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
+// Lazy load modal components for smaller initial bundle
+const PlaceDetailModal = lazy(() => import('./PlaceDetailModal'));
+const FavoritesList = lazy(() => import('./FavoritesList'));
+
 interface ChatInterfaceProps {
   onMapChunksUpdate: (chunks: MapChunk[]) => void;
   userLocation?: Coordinates;
@@ -26,6 +28,7 @@ interface ChatInterfaceProps {
   onNavigate: () => void;
   mapChunks: MapChunk[];
   routeData: RouteData | null;
+  isRouteLoading?: boolean;
   onSelectPlace: (place: PlaceDetails | null) => void;
   favorites: PlaceDetails[];
   onToggleFavorite: (place: PlaceDetails) => void;
@@ -35,6 +38,8 @@ interface ChatInterfaceProps {
   onCancelRoute: () => void;
 }
 
+const MAX_TEXTAREA_HEIGHT = 128;
+
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onMapChunksUpdate,
   userLocation,
@@ -43,6 +48,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onNavigate,
   mapChunks,
   routeData,
+  isRouteLoading,
   onSelectPlace,
   favorites,
   onToggleFavorite,
@@ -55,7 +61,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const { toggleTheme, isDark } = useTheme();
   const { history: searchHistoryItems, addSearch, clearHistory, removeItem } = useSearchHistory();
   const speechLang = locale === 'tr' ? 'tr-TR' : 'en-US';
-  const { isListening, transcript, isSupported: voiceSupported, startListening, stopListening } = useSpeechRecognition(speechLang);
+  const { isListening, transcript, isSupported: voiceSupported, startListening, stopListening, resetTranscript } = useSpeechRecognition(speechLang);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -75,23 +81,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const searchHistoryRef = useRef<HTMLDivElement>(null);
+
+  // Refs for stable callback access (avoid stale closures)
+  const inputValueRef = useRef(inputValue);
+  inputValueRef.current = inputValue;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const modelTypeRef = useRef(modelType);
+  modelTypeRef.current = modelType;
+  const activeFilterRef = useRef(activeFilter);
+  activeFilterRef.current = activeFilter;
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Voice transcript → input
+  // Voice transcript -> input
   useEffect(() => {
     if (transcript) {
       setInputValue(transcript);
     }
   }, [transcript]);
 
-  // Auto-send after voice recognition ends
+  // Auto-send after voice recognition ends with final transcript
   useEffect(() => {
     if (!isListening && transcript.trim()) {
       handleSendMessage(transcript.trim());
+      resetTranscript();
     }
   }, [isListening]);
 
@@ -116,9 +136,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return () => window.removeEventListener('keydown', handler);
   }, [selectedChipPlace, showFavorites, toggleTheme]);
 
+  // Stable send message - reads latest state from refs to avoid recreating on every message
   const handleSendMessage = useCallback(async (overrideText?: string) => {
-    const userText = (overrideText || inputValue).trim();
-    if (!userText || isLoading) return;
+    const userText = (overrideText || inputValueRef.current).trim();
+    if (!userText || isLoadingRef.current) return;
 
     setInputValue('');
     setShowSearchHistory(false);
@@ -137,7 +158,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     setMessages(prev => [...prev, newMessage]);
 
-    // Handle "git" / "go" command
     if (userText.toLowerCase() === 'git' || userText.toLowerCase() === 'go') {
       if (selectedPlace) {
         onNavigate();
@@ -171,7 +191,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }]);
 
     try {
-      const response = await sendMessageToGemini(messages, userText, modelType, userLocation, selectedPlace, activeFilter);
+      const currentMessages = messagesRef.current;
+      const response = await sendMessageToGemini(
+        currentMessages, userText, modelTypeRef.current,
+        userLocation, selectedPlace, activeFilterRef.current
+      );
 
       if (response.groundingMetadata?.mapChunks && response.groundingMetadata.mapChunks.length > 0) {
         onMapChunksUpdate(response.groundingMetadata.mapChunks);
@@ -198,7 +222,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, messages, modelType, userLocation, selectedPlace, activeFilter, onMapChunksUpdate, onNavigate, addSearch, t]);
+  }, [selectedPlace, userLocation, onMapChunksUpdate, onNavigate, addSearch, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -210,7 +234,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
+    e.target.style.height = `${Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
   };
 
   const handlePlaceClick = useCallback((place: Place) => {
@@ -228,6 +252,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
     onSelectPlace(placeDetails);
   }, [onSelectPlace]);
+
+  // Better blur handling: check if click target is inside search history
+  const handleInputBlur = useCallback((e: React.FocusEvent) => {
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (searchHistoryRef.current?.contains(relatedTarget)) return;
+    setTimeout(() => setShowSearchHistory(false), 150);
+  }, []);
 
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] w-full overflow-hidden">
@@ -249,6 +280,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             mode={transportMode}
             onModeChange={onModeChange}
             onCancel={onCancelRoute}
+            isLoading={isRouteLoading}
           />
         )}
       </div>
@@ -270,8 +302,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <Navigation2 size={10} className="mr-1" /> {t('gps_active')}
                   </span>
                 ) : (
-                  <span className="text-[10px] text-gray-400 font-medium flex items-center">
-                    <Navigation2 size={10} className="mr-1" /> {locationError ? t('gps_error') : t('locating')}
+                  <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                    {locationError ? (
+                      <><Navigation2 size={10} /> {t('gps_error')}</>
+                    ) : (
+                      <><Loader2 size={10} className="animate-spin" /> {t('locating')}</>
+                    )}
                   </span>
                 )}
               </div>
@@ -282,7 +318,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setLocale(locale === 'en' ? 'tr' : 'en')}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-xs font-bold min-w-[36px] min-h-[36px]"
               title={locale === 'en' ? 'Türkçe' : 'English'}
             >
               {locale === 'en' ? 'TR' : 'EN'}
@@ -290,7 +326,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-w-[36px] min-h-[36px]"
               title={isDark ? t('light_mode') : t('dark_mode')}
               aria-label={isDark ? t('light_mode') : t('dark_mode')}
             >
@@ -299,7 +335,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
             <button
               onClick={() => setShowFavorites(true)}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors min-w-[36px] min-h-[36px]"
               title={t('favorites')}
               aria-label={t('favorites')}
             >
@@ -309,7 +345,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
               <button
                 onClick={() => setModelType(ModelType.MAPS_SEARCH)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.MAPS_SEARCH ? 'bg-white dark:bg-gray-700 shadow-sm text-emerald-600' : 'text-gray-400'}`}
+                className={`p-1.5 rounded-md min-w-[32px] min-h-[32px] flex items-center justify-center ${modelType === ModelType.MAPS_SEARCH ? 'bg-white dark:bg-gray-700 shadow-sm text-emerald-600' : 'text-gray-400'}`}
                 title={t('maps_search')}
                 aria-label={t('maps_search')}
               >
@@ -317,7 +353,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </button>
               <button
                 onClick={() => setModelType(ModelType.REASONING)}
-                className={`p-1.5 rounded-md ${modelType === ModelType.REASONING ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600' : 'text-gray-400'}`}
+                className={`p-1.5 rounded-md min-w-[32px] min-h-[32px] flex items-center justify-center ${modelType === ModelType.REASONING ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600' : 'text-gray-400'}`}
                 title={t('reasoning')}
                 aria-label={t('reasoning')}
               >
@@ -345,9 +381,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {msg.places && msg.places.length > 0 && (
                 <div className="flex flex-col gap-2 ml-12 mr-4 animate-in slide-in-from-left-2 duration-300 overflow-hidden">
-                  {msg.places.map((place, index) => (
+                  {msg.places.map((place) => (
                     <PlaceChip
-                      key={index}
+                      key={`${place.name}-${place.coordinates.lat}-${place.coordinates.lng}`}
                       place={place}
                       onClick={handlePlaceClick}
                       userLocation={userLocation}
@@ -362,17 +398,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* Input Area */}
         <div className="flex-none p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 relative">
-          <SearchHistory
-            history={searchHistoryItems}
-            onSelect={(query) => {
-              setInputValue(query);
-              setShowSearchHistory(false);
-              handleSendMessage(query);
-            }}
-            onRemove={removeItem}
-            onClear={clearHistory}
-            visible={showSearchHistory}
-          />
+          <div ref={searchHistoryRef}>
+            <SearchHistory
+              history={searchHistoryItems}
+              onSelect={(query) => {
+                setInputValue(query);
+                setShowSearchHistory(false);
+                handleSendMessage(query);
+              }}
+              onRemove={removeItem}
+              onClear={clearHistory}
+              visible={showSearchHistory}
+            />
+          </div>
 
           <div className="relative flex items-end gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all shadow-sm">
             {voiceSupported && (
@@ -396,11 +434,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               onChange={handleInputResize}
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSearchHistory(true)}
-              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+              onBlur={handleInputBlur}
               placeholder={isListening ? t('listening') : t('type_message')}
-              className="w-full bg-transparent border-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0 resize-none max-h-32 py-2.5 px-2 text-base md:text-sm"
+              className="w-full bg-transparent border-none text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-0 focus:outline-none resize-none py-2.5 px-2 text-base md:text-sm"
               rows={1}
-              style={{ minHeight: '44px' }}
+              style={{ minHeight: '44px', maxHeight: `${MAX_TEXTAREA_HEIGHT}px` }}
               aria-label={t('type_message')}
             />
             <button
@@ -418,35 +456,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
-      {/* Place Detail Modal */}
+      {/* Place Detail Modal - lazy loaded */}
       {selectedChipPlace && (
-        <PlaceDetailModal
-          place={selectedChipPlace}
-          onClose={() => setSelectedChipPlace(null)}
-          onNavigate={handleNavigateToPlace}
-          onToggleFavorite={onToggleFavorite}
-          isFavorite={isFavorite}
-        />
+        <Suspense fallback={null}>
+          <PlaceDetailModal
+            place={selectedChipPlace}
+            onClose={() => setSelectedChipPlace(null)}
+            onNavigate={handleNavigateToPlace}
+            onToggleFavorite={onToggleFavorite}
+            isFavorite={isFavorite}
+          />
+        </Suspense>
       )}
 
-      {/* Favorites List Modal */}
+      {/* Favorites List Modal - lazy loaded */}
       {showFavorites && (
-        <FavoritesList
-          favorites={favorites}
-          onClose={() => setShowFavorites(false)}
-          onSelect={(place) => {
-            setShowFavorites(false);
-            const placeForNav: Place = {
-              name: place.name,
-              coordinates: place.geometry.location,
-              short_description: place.short_description || '',
-              category: place.category || t('saved_place'),
-              website: place.website || null
-            };
-            handleNavigateToPlace(placeForNav);
-          }}
-          onRemove={(place) => onToggleFavorite(place)}
-        />
+        <Suspense fallback={null}>
+          <FavoritesList
+            favorites={favorites}
+            onClose={() => setShowFavorites(false)}
+            onSelect={(place) => {
+              setShowFavorites(false);
+              const placeForNav: Place = {
+                name: place.name,
+                coordinates: place.geometry.location,
+                short_description: place.short_description || '',
+                category: place.category || t('saved_place'),
+                website: place.website || null
+              };
+              handleNavigateToPlace(placeForNav);
+            }}
+            onRemove={(place) => onToggleFavorite(place)}
+          />
+        </Suspense>
       )}
     </div>
   );

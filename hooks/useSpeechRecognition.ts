@@ -6,6 +6,7 @@ interface UseSpeechRecognitionReturn {
   isSupported: boolean;
   startListening: () => void;
   stopListening: () => void;
+  resetTranscript: () => void;
 }
 
 export const useSpeechRecognition = (lang: string = 'en-US'): UseSpeechRecognitionReturn => {
@@ -39,11 +40,18 @@ export const useSpeechRecognition = (lang: string = 'en-US'): UseSpeechRecogniti
     };
 
     recognition.onresult = (event: any) => {
-      let final = '';
+      let finalText = '';
+      let interimText = '';
       for (let i = 0; i < event.results.length; i++) {
-        final += event.results[i][0].transcript;
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalText += result[0].transcript;
+        } else {
+          interimText += result[0].transcript;
+        }
       }
-      setTranscript(final);
+      // Show final text if available, otherwise show interim for visual feedback
+      setTranscript(finalText || interimText);
     };
 
     recognition.onerror = () => {
@@ -64,5 +72,9 @@ export const useSpeechRecognition = (lang: string = 'en-US'): UseSpeechRecogniti
     }
   }, []);
 
-  return { isListening, transcript, isSupported, startListening, stopListening };
+  const resetTranscript = useCallback(() => {
+    setTranscript('');
+  }, []);
+
+  return { isListening, transcript, isSupported, startListening, stopListening, resetTranscript };
 };

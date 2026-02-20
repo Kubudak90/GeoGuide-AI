@@ -14,8 +14,8 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
     const { t } = useTranslation();
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-900/10">
@@ -45,7 +45,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ favorites, onClose, onSel
                         <div className="space-y-3">
                             {favorites.map((place, index) => (
                                 <div
-                                    key={`${place.name}-${index}`}
+                                    key={place.id}
                                     className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-700 hover:shadow-sm transition-all bg-white dark:bg-gray-800 group"
                                 >
                                     <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center flex-shrink-0">

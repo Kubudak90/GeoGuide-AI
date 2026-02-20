@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import ChatInterface from './components/ChatInterface';
 import { MapChunk, PlaceDetails } from './types';
 import { getDirections, RouteData } from './services/mapService';
@@ -13,11 +13,20 @@ const App: React.FC = () => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [transportMode, setTransportMode] = useState<TransportMode>('driving');
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
 
   const { location, locationError } = useLocation();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { showToast } = useToast();
   const { t } = useTranslation();
+
+  // Use refs for values needed in stable callbacks to avoid stale closures
+  const selectedPlaceRef = useRef(selectedPlace);
+  selectedPlaceRef.current = selectedPlace;
+  const transportModeRef = useRef(transportMode);
+  transportModeRef.current = transportMode;
+  const locationRef = useRef(location);
+  locationRef.current = location;
 
   const handleToggleFavorite = useCallback((place: PlaceDetails) => {
     const wasFavorite = isFavorite(place);
@@ -28,17 +37,23 @@ const App: React.FC = () => {
     );
   }, [toggleFavorite, isFavorite, showToast, t]);
 
-  const handleNavigate = useCallback(async (place: PlaceDetails) => {
-    if (!location) {
+  // Stable callback - reads latest state from refs
+  const handleNavigate = useCallback(async () => {
+    const place = selectedPlaceRef.current;
+    const loc = locationRef.current;
+    if (!place) return;
+    if (!loc) {
       showToast(t('enable_location'), 'warning');
       return;
     }
 
+    setIsRouteLoading(true);
     const route = await getDirections(
-      location,
+      loc,
       { latitude: place.geometry.location.lat, longitude: place.geometry.location.lng },
-      transportMode
+      transportModeRef.current
     );
+    setIsRouteLoading(false);
 
     if (route) {
       setRouteData(route);
@@ -46,21 +61,25 @@ const App: React.FC = () => {
     } else {
       showToast(t('route_not_found'), 'error');
     }
-  }, [location, transportMode, showToast, t]);
+  }, [showToast, t]);
 
   const handleModeChange = useCallback(async (mode: TransportMode) => {
     setTransportMode(mode);
-    if (selectedPlace && location) {
+    const place = selectedPlaceRef.current;
+    const loc = locationRef.current;
+    if (place && loc) {
+      setIsRouteLoading(true);
       const route = await getDirections(
-        location,
-        { latitude: selectedPlace.geometry.location.lat, longitude: selectedPlace.geometry.location.lng },
+        loc,
+        { latitude: place.geometry.location.lat, longitude: place.geometry.location.lng },
         mode
       );
+      setIsRouteLoading(false);
       if (route) {
         setRouteData(route);
       }
     }
-  }, [selectedPlace, location]);
+  }, []);
 
   const handleCancelRoute = useCallback(() => {
     setRouteData(null);
@@ -73,9 +92,10 @@ const App: React.FC = () => {
         userLocation={location}
         locationError={locationError}
         selectedPlace={selectedPlace}
-        onNavigate={() => selectedPlace && handleNavigate(selectedPlace)}
+        onNavigate={handleNavigate}
         mapChunks={mapChunks}
         routeData={routeData}
+        isRouteLoading={isRouteLoading}
         onSelectPlace={setSelectedPlace}
         favorites={favorites}
         onToggleFavorite={handleToggleFavorite}
