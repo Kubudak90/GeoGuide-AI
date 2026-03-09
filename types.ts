@@ -39,8 +39,8 @@ export interface MapChunk {
 }
 
 export enum ModelType {
-  MAPS_SEARCH = 'gemini-2.5-flash',
-  REASONING = 'gemini-3-pro-preview'
+  MAPS_SEARCH = 'kimi-k2.5',
+  REASONING = 'kimi-k2.5',
 }
 
 export interface Coordinates {
