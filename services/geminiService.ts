@@ -1,23 +1,18 @@
-import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { Message, ModelType, Coordinates, GroundingMetadata, SearchChunk, MapChunk, PlaceDetails, Place } from "../types";
+import { Message, ModelType, Coordinates, GroundingMetadata, Place, PlaceDetails } from "../types";
 
 /// <reference types="vite/client" />
 
-// Initialize Gemini Client
-// Vite replaces process.env.API_KEY at build time, but TS needs to know about it.
-// We also support import.meta.env for standard Vite usage.
+// Initialize Kimi K2.5 Client
 const apiKey = (import.meta.env?.VITE_API_KEY as string) || (process as any).env.API_KEY;
 
-console.log("Gemini Service Initializing...");
+const KIMI_BASE_URL = "https://api.moonshot.cn/v1";
+
+console.log("Kimi Service Initializing...");
 if (!apiKey) {
-  console.error("CRITICAL: Gemini API Key is missing! Check .env.local (GEMINI_API_KEY or VITE_API_KEY)");
+  console.error("CRITICAL: Kimi API Key is missing! Check .env.local (KIMI_API_KEY or VITE_API_KEY)");
 } else {
-  console.log("Gemini API Key found (length):", apiKey.length);
+  console.log("Kimi API Key found (length):", apiKey.length);
 }
-
-const ai = new GoogleGenAI({ apiKey: apiKey });
-
-// ... (imports)
 
 export const sendMessageToGemini = async (
   history: Message[],
@@ -28,34 +23,13 @@ export const sendMessageToGemini = async (
 ): Promise<{ text: string; groundingMetadata?: GroundingMetadata; places?: Place[] }> => {
 
   try {
-    // 1. Format History
+    // 1. Format History for OpenAI-compatible format
     const recentHistory = history.slice(-10).map(msg => ({
-      role: msg.role,
-      parts: [{ text: msg.text }]
+      role: msg.role === 'model' ? 'assistant' as const : 'user' as const,
+      content: msg.text
     }));
 
-    // 2. Prepare Tools & Config
-    const tools: any[] = [];
-    let toolConfig: any = undefined;
-
-    if (modelType === ModelType.MAPS_SEARCH) {
-      tools.push({ googleSearch: {} });
-      tools.push({ googleMaps: {} });
-
-      if (userLocation) {
-        toolConfig = {
-          retrievalConfig: {
-            latLng: {
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude
-            }
-          }
-        };
-      }
-    }
-
-    // 3. Construct System Instruction
-    // We append this to the user's message to guide the model's output format.
+    // 2. Construct System Instruction
     const jsonInstruction = `
     IMPORTANT: If you are recommending places, you MUST output a JSON array of places at the end of your response.
     The JSON array should be wrapped in a markdown code block labeled 'json'.
@@ -94,33 +68,45 @@ If the user asks about "this place" or "it", refer to the place above.
 `;
     }
 
-    const contents = [
+    let locationContext = "";
+    if (userLocation) {
+      locationContext = `\nUser's current location: latitude ${userLocation.latitude}, longitude ${userLocation.longitude}.\n`;
+    }
+
+    const systemMessage = `You are GeoGuide AI, an expert travel and geography assistant. You help users discover places, plan trips, and learn about locations around the world. Be helpful, informative, and engaging.${locationContext}${jsonInstruction}`;
+
+    const messages = [
+      { role: 'system' as const, content: systemMessage },
       ...recentHistory,
-      { role: 'user', parts: [{ text: systemContext + currentMessage + jsonInstruction }] }
+      { role: 'user' as const, content: systemContext + currentMessage }
     ];
 
-    const modelId = modelType;
-
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: contents,
-      config: {
-        tools: tools.length > 0 ? tools : undefined,
-        toolConfig: toolConfig,
-        safetySettings: [
-          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-        ]
-      }
+    // 3. Call Kimi K2.5 API (OpenAI-compatible)
+    const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: modelType,
+        messages: messages,
+        temperature: 0.6,
+        extra_body: { chat_template_kwargs: { thinking: false } }
+      })
     });
 
-    let text = response.text || "I couldn't generate a response.";
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Kimi API Error:", response.status, errorBody);
+      throw new Error(`Kimi API Error: ${response.status} - ${errorBody}`);
+    }
+
+    const data = await response.json();
+    let text = data.choices?.[0]?.message?.content || "I couldn't generate a response.";
     let places: Place[] | undefined = undefined;
 
     // 4. Parse JSON from Response
-    // Regex to find JSON block wrapped in ```json ... ``` or just ``` ... ```
     const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
     const match = text.match(jsonRegex);
 
@@ -131,65 +117,17 @@ If the user asks about "this place" or "it", refer to the place above.
 
         if (Array.isArray(parsed)) {
           places = parsed;
-          // Optional: Remove the JSON block from the displayed text if desired
-          // text = text.replace(match[0], '').trim(); 
-          // For now, we keep it or maybe clean it up. Let's remove it to keep chat clean.
           text = text.replace(match[0], '').trim();
         }
       } catch (e) {
-        console.warn("Failed to parse JSON from Gemini response:", e);
+        console.warn("Failed to parse JSON from Kimi response:", e);
       }
     }
 
-    // Extract Grounding Metadata (keep existing logic)
-    const groundingMetadata = extractGroundingMetadata(response);
-
-    return { text, groundingMetadata, places };
+    return { text, groundingMetadata: undefined, places };
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Kimi API Error:", error);
     throw error;
   }
-};
-
-const extractGroundingMetadata = (response: GenerateContentResponse): GroundingMetadata | undefined => {
-  const candidate = response.candidates?.[0];
-  const groundingChunks = candidate?.groundingMetadata?.groundingChunks;
-
-  if (!groundingChunks || groundingChunks.length === 0) {
-    return undefined;
-  }
-
-  const searchChunks: SearchChunk[] = [];
-  const mapChunks: MapChunk[] = [];
-
-  groundingChunks.forEach((chunk: any) => {
-    if (chunk.web) {
-      searchChunks.push({
-        uri: chunk.web.uri,
-        title: chunk.web.title,
-        source: chunk.web.source
-      });
-    } else if (chunk.maps) {
-      // Try to find the best address field, falling back to what might be available
-      const address = chunk.maps.address || chunk.maps.formattedAddress;
-      const snippet = chunk.maps.placeAnswerSources?.reviewSnippets?.[0]?.content;
-
-      mapChunks.push({
-        uri: chunk.maps.uri,
-        title: chunk.maps.title,
-        address: address,
-        snippet: snippet
-      });
-    }
-  });
-
-  if (searchChunks.length === 0 && mapChunks.length === 0) {
-    return undefined;
-  }
-
-  return {
-    searchChunks: searchChunks.length > 0 ? searchChunks : undefined,
-    mapChunks: mapChunks.length > 0 ? mapChunks : undefined,
-  };
 };

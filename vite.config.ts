@@ -18,14 +18,10 @@ export default defineConfig(({ mode }) => {
     esbuild: {
       target: 'esnext'
     },
-    optimizeDeps: {
-      include: ['@google/genai']
-    },
     define: {
-      // Polyfill process.env for libraries that expect it
       'process.env': {
-        API_KEY: env.GEMINI_API_KEY || env.VITE_API_KEY || '',
-        GEMINI_API_KEY: env.GEMINI_API_KEY || env.VITE_API_KEY || ''
+        API_KEY: env.KIMI_API_KEY || env.VITE_API_KEY || '',
+        KIMI_API_KEY: env.KIMI_API_KEY || env.VITE_API_KEY || ''
       }
     },
     resolve: {
